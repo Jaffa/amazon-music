@@ -27,3 +27,15 @@ URL  | Target | Description
 
 The `AmazonMusic.call` method can be used to call these APIs and get responses. This is used throughout the library, and can also be used directly (although this is discouraged, since those features should be rolled into the API).
 
+Analysis
+--------
+
+To identify new endpoints, and the request/response format, using a browser's development tools is easiest:
+
+1. Open a private browsing window
+2. Navigate to [https://music.amazon.co.uk/](https://music.amazon.co.uk/)
+3. Open the web development tools in the browser (for example, pressing F12 in Firefox)
+4. Open the _Network_ tab and filter it to XMLHttpRequest POSTs
+5. Perform an action and inspect the calls made
+
+Confirming the format of the endpoint URLs for other regions and territories would be very helpful!

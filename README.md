@@ -1,7 +1,7 @@
 AmazonMusic
 ===========
 
-_AmazonMusic_ is an open source Python library, providing access to Amazon Music/Prime Music's streaming service. It enables new applications to be written that use Amazon's service.
+_AmazonMusic_ is an open source Python 3 library, providing access to Amazon Music/Prime Music's streaming service. It enables new applications to be written that use Amazon's service.
 
 This is similar to other projects for other streaming services. For example, for Spotify use [`librespot`](https://github.com/plietar/librespot) and [`python-librespot`](https://github.com/plietar/python-librespot/) - based on Spotify's [`libspotify`](https://developer.spotify.com/technologies/libspotify/). Unfortunately, Amazon [don't offer an Amazon Music SDK](https://forums.developer.amazon.com/questions/58421/amazon-music-api.html), and this seems to be the first attempt to reverse engineer one.
 
@@ -64,10 +64,12 @@ Examples
 Two examples are included. To run them:
 
 1. Enure your working directory contains the `amazonmusic.py` library
-2. Run:
+2. Set `PYTHONPATH` and run them in Python 3:
 
-	PYTHONPATH=. python3 examples/play-album.py
-	PYTHONPATH=. python3 examples/play-station.py
+```sh
+PYTHONPATH=. python3 examples/play-album.py
+PYTHONPATH=. python3 examples/play-station.py
+```
 
 Both the album ASIN and station ASIN to be played are hardcoded within the examples, but can be changed (finding a new ASIN is left as an exercise for the reader at this point!)
 
