@@ -36,17 +36,19 @@ Features
 * Play album by ASIN
 * Play station by ASIN
 * Play playlist by ASIN
-* Supports Amazon Music UK
+* Supports Amazon Music UK with Prime subscriptions
 
 ### Roadmap
 Short term:
 
-* Searching
+* Searching (in progress)
 * Browse recommendations
+* Browse stations
 * Library access (e.g. saved albums, playlists etc.)
 
 Medium term:
 
+* Ensure full Amazon Music subscriptions are supported
 * Support other regions/territories (help needed!)
 * Better handling of a captcha during authentication
 
@@ -65,7 +67,7 @@ If you would like to contribute to development, or understand how the library - 
 Examples
 --------
 
-Two examples are included. To run them:
+Several examples are included. To run them:
 
 1. Enure your working directory contains the `amazonmusic.py` library
 2. Set `PYTHONPATH` and run them in Python 3:
@@ -73,9 +75,37 @@ Two examples are included. To run them:
 ```sh
 PYTHONPATH=. python3 examples/play-album.py
 PYTHONPATH=. python3 examples/play-station.py
+PYTHONPATH=. python3 examples/play-playlist.py
 ```
 
-Both the album ASIN and station ASIN to be played are hardcoded within the examples, but can be changed (finding a new ASIN is left as an exercise for the reader at this point!)
+Default ASINs for albums, stations and playlists are defaulted within the examples, but alternatives can be provided as a command line argument. The `search.py` example can be used to find alternatives (although the raw JSON needs to be manually parsed at the moment):
+
+```
+PYTHONPATH=. python3 examples/search.py Adele 25
+```
+
+```javascript
+[...]
+      {
+        "document": {
+          "__type": "com.amazon.music.platform.model#CatalogAlbum",
+          "artFull": {
+            "URL": "https://m.media-amazon.com/images/I/A170tH1apiL._AA500.jpg",
+            "__type": "com.amazon.music.platform.model#ArtURL",
+            "artUrl": "https://m.media-amazon.com/images/I/A170tH1apiL._AA500.jpg"
+          },
+          "artistAsin": "B001EEJMYG",
+          "artistName": "Adele",
+          "asin": "B0170UQ0OC",
+          "isMusicSubscription": "true",
+          "originalReleaseDate": 1447977600.0,
+          "primaryGenre": "Pop",
+          "primeStatus": "PRIME",
+          "title": "25",
+          "trackCount": 11
+        }
+      },
+```
 
 Background
 ----------
