@@ -61,6 +61,7 @@ If you would like to contribute to development, or understand how the library - 
 
 Examples
 --------
+
 Two examples are included. To run them:
 
 1. Enure your working directory contains the `amazonmusic.py` library
@@ -72,6 +73,13 @@ PYTHONPATH=. python3 examples/play-station.py
 ```
 
 Both the album ASIN and station ASIN to be played are hardcoded within the examples, but can be changed (finding a new ASIN is left as an exercise for the reader at this point!)
+
+Background
+----------
+
+I have a long term plan to build an integrated smart home with voice assistant (possibly using the likes of [spaCy](https://spacy.io/), [Snowboy](https://snowboy.kitt.ai/), [openHAB](https://www.openhab.org/), [Mopidy](https://www.mopidy.com/) and [respeaker-avs](https://github.com/respeaker/avs)). As an Amazon Prime subscriber, I get access to Prime Music - which just about covers my streaming audio needs. Unfortunately, Alexa Voice Service [only allows people actively working with Amazon on commercial products](https://github.com/alexa-pi/AlexaPi/wiki/Q&A-(FAQ)#does-alexapi-support-amazon-music) under NDA to access Amazon Music.
+
+Switching to Spotify will cost money. Commercialising the integrating smart home solution might be an even longer term plan, but don't want to predicate access on that. Reverse engineering Amazon Music - or getting Amazon to provide an API - so that it can be added to projects like Mopidy seems like the best way forward.
 
 License
 -------
