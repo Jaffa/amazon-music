@@ -19,11 +19,12 @@ Known Endpoints
 
 URL  | Target | Description 
 -----|--------|----------------
-/EU/api/mpqs/voiceenabled/createQueue | com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternalVoiceEnabledClient.createQueue | Create a queue for a station (and other types of queuable item?)
-/EU/api/muse/legacy/lookup | com.amazon.musicensembleservice.MusicEnsembleService.lookup | Look up the tracks for an album (and other types of defined list, such as a playlist?)
+/EU/api/mpqs/voiceenabled/createQueue | com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternalVoiceEnabledClient.createQueue | Create a queue for a station
+/EU/api/muse/legacy/lookup | com.amazon.musicensembleservice.MusicEnsembleService.lookup | Look up the tracks for an album or playlist
 /EU/api/dmls/ | com.amazon.digitalmusiclocator.DigitalMusicLocatorServiceExternal.getRestrictedStreamingURL | Get the URL to stream a track
 /EU/api/mpqs/voiceenabled/getNextTracks | com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternalVoiceEnabledClient.getNextTracks | Get the next page for a queue
 /EU/api/search/v1_1/ | com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search | Perform a search
+/EU/api/muse/legacy/getBrowseRecommendations | com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations | Browse recommendations
 
 The `AmazonMusic.call` method can be used to call these APIs and get responses. This is used throughout the library, and can also be used directly (although this is discouraged, since those features should be rolled into the API).
 

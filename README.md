@@ -35,12 +35,14 @@ Features
 
 * Play album by ASIN
 * Play station by ASIN
+* Play playlist by ASIN
 * Supports Amazon Music UK
 
 ### Roadmap
 Short term:
 
 * Searching
+* Browse recommendations
 * Library access (e.g. saved albums, playlists etc.)
 
 Medium term:
@@ -50,6 +52,7 @@ Medium term:
 
 Possible long term:
 
+* Better examples (full Amazon Music client?)
 * Manage library (e.g. create playlists)
 * Play tracks without an external player (such as `cvlc`)
 
@@ -79,7 +82,7 @@ Background
 
 I have a long term plan to build an integrated smart home with voice assistant (possibly using the likes of [spaCy](https://spacy.io/), [Snowboy](https://snowboy.kitt.ai/), [openHAB](https://www.openhab.org/), [Mopidy](https://www.mopidy.com/) and [respeaker-avs](https://github.com/respeaker/avs)). As an Amazon Prime subscriber, I get access to Prime Music - which just about covers my streaming audio needs. Unfortunately, Alexa Voice Service [only allows people actively working with Amazon on commercial products](https://github.com/alexa-pi/AlexaPi/wiki/Q&A-(FAQ)#does-alexapi-support-amazon-music) under NDA to access Amazon Music.
 
-Switching to Spotify will cost money. Commercialising the integrating smart home solution might be an even longer term plan, but don't want to predicate access on that. Reverse engineering Amazon Music - or getting Amazon to provide an API - so that it can be added to projects like Mopidy seems like the best way forward.
+Switching to Spotify will cost money. Commercialising the integrating smart home solution might be an even longer term plan, but I don't want to predicate access on that. Reverse engineering Amazon Music - or getting Amazon to provide an API - so that it can be added to projects like Mopidy seems like the best way forward.
 
 License
 -------
