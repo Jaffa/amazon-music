@@ -107,6 +107,10 @@ PYTHONPATH=. python3 examples/search.py Adele 25
       },
 ```
 
+```sh
+PYTHONPATH=. python3 examples/play-album.py B0170UQ0OC
+```
+
 Background
 ----------
 
