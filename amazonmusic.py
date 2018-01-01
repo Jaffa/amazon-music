@@ -26,7 +26,7 @@ import re
 import types
 from http.cookiejar import LWPCookieJar
 
-AMAZON_MUSIC='https://music.amazon.co.uk/'
+AMAZON_MUSIC='https://music.amazon.co.uk'
 AMAZON_SIGNIN='https://www.amazon.co.uk/ap/signin'
 USER_AGENT='Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
 
@@ -135,17 +135,22 @@ class AmazonMusic:
       :param target: The (Java?) class of the API to invoke.
       :param query: The JSON request.
     """
-  
-    r = self.session.post('https://music.amazon.co.uk/%s/api/%s' % (self.region, endpoint), headers = {
-                 'User-Agent': USER_AGENT,
-                 'Content-Type': 'application/json',
-                 'X-Amz-Target': target,
-                 'csrf-token': self.csrfToken,
-                 'csrf-rnd': self.csrfRnd,
-                 'csrf-ts': self.csrfTs,
-                 'Content-Encoding': 'amz-1.0',
-                 'X-Requested-With': 'XMLHttpRequest'
-               }, data = json.dumps(query))
+    query_headers = {
+      'User-Agent': USER_AGENT,
+      'csrf-token': self.csrfToken,
+      'csrf-rnd': self.csrfRnd,
+      'csrf-ts': self.csrfTs,
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+    if target is None: # Legacy cirrus API
+      query_data = query
+    else:
+      query_headers['X-Amz-Target'] = target
+      query_headers['Content-Type'] = 'application/json'
+      query_headers['Content-Encoding'] = 'amz-1.0'
+      query_data = json.dumps(query)
+
+    r = self.session.post('%s/%s/api/%s' % (AMAZON_MUSIC, self.region, endpoint), headers = query_headers, data = query_data)
     self.session.cookies.save()
     return r.json()
 
@@ -189,6 +194,36 @@ class AmazonMusic:
                   'musicTerritory': self.territory,
                   'customerId': self.customerId 
                 })['albumList'][0])
+
+
+  def listAlbums(self):
+    """
+      Return albums that are in the library. Amazon considers all albums,
+      however this filters the list to albums with only four or more items.
+    """
+    return list(
+        map(
+          lambda r: Album(self, r),
+          filter(
+            lambda f: f['trackCount'] >= 4,
+            self.call('muse/legacy/lookup',
+                  'com.amazon.musicensembleservice.MusicEnsembleService.lookup',
+                  {
+                    'asins': list(map(
+                        lambda h: h['document']['asin'],
+                        self.search(None, library_only=True, tracks=False, albums=True,
+                                          playlists=False, artists=False, stations=False)[0]['hits']
+                      )),
+                    'features': [ 'popularity', 'expandTracklist', 'trackLibraryAvailability', 'collectionLibraryAvailability' ],
+                    'requestedContent': 'MUSIC_SUBSCRIPTION',
+                    'deviceId': self.deviceId,
+                    'deviceType': self.deviceType,
+                    'musicTerritory': self.territory,
+                    'customerId': self.customerId 
+                  })['albumList']
+          )
+        )
+      )
 
 
   def getPlaylist(self, albumId):
@@ -244,8 +279,16 @@ class AmazonMusic:
     # -- Search the library...
     #
     query_library = query_base()
-    query_library['query']['__type'] = 'com.amazon.music.search.model#MatchQuery'
-    query_library['query']['query'] = query
+    if query is None:
+      query_library['query'] = {
+        '__type': 'com.amazon.music.search.model#ExistsQuery',
+        'fieldName': 'asin'
+      }
+    else:
+      query_library['query'] = {
+        '__type': 'com.amazon.music.search.model#MatchQuery',
+        'query': query
+      }
 
     resultSpec = lambda n: {
         'label': '%ss' % (n),
@@ -298,6 +341,7 @@ class AmazonMusic:
       results.extend(self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_amazon)['results'])
 
     ### TODO Convert into a better data structure
+    ### TODO There seems to be a paging token
     return results
 
 
@@ -369,6 +413,7 @@ class Album:
       * `coverUrl` - URL containing cover art for the album.
       * `genre` - Genre of the album.
       * `rating` - Average review score (out of 5).
+      * `trackCount` - Number of tracks.
       * `releaseDate` - UNIX timestamp of the original release date.
 
   """
@@ -388,6 +433,7 @@ class Album:
     self.artist = json['artist']['name']
     self.genre = json['productDetails'].get('primaryGenreName')
     self.rating = json['reviews']['average']
+    self.trackCount = json['trackCount']
     self.releaseDate = json['originalReleaseDate'] / 1000
 
 
@@ -410,7 +456,7 @@ class Playlist:
       * `coverUrl` - URL containing cover art for the album.
       * `genre` - Genre of the album.
       * `rating` - Average review score (out of 5).
-
+      * `trackCount` - Number of tracks.
   """
 
   def __init__(self, am, json):
@@ -427,6 +473,7 @@ class Playlist:
     self.name = json['title']
     self.genre = json['primaryGenre']
     self.rating = json['reviews']['average']
+    self.trackCount = json['trackCount']
 
 
   def tracks(self):

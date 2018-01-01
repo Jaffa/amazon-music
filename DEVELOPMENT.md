@@ -7,7 +7,6 @@ The _AmazonMusic_ library works in two parts:
 
 1. Authenticating through the Amazon login portal, and saving the cookies in a cookie jar (by default `~/.amazonmusic-cookies.dat`)
 2. Accessing the JSON API, used by the Amazon Music web interface, to access stations, tracks etc.
-	* There is no API, as far as I can tell, for listing the albums in your library, this requires screenscraping :-(
 
 It is important, particularly during (1), to appear to be a normal browser - paying particular attention to `Accept` and `Accept-Language` headers.
 
@@ -27,8 +26,29 @@ URL  | Target | Description
 /EU/api/search/v1_1/ | com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search | Perform a search
 /EU/api/muse/legacy/getBrowseRecommendations | com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations | Browse recommendations
 
-
 The `AmazonMusic.call` method can be used to call these APIs and get responses. This is used throughout the library, and can also be used directly (although this is discouraged, since those features should be rolled into the API).
+
+### Searching
+
+A number of search models exist:
+
+Model | Parameters | Description
+------|------------|--------------------
+BooleanQuery | must<Query>, must_not<Query>, should<Query> | Allows building of composite queries
+ExistsQuery | fieldName | The field exists and has a non-null value
+MatchQuery | fieldName, matchType, query | The given field matches `query`. By default, `fieldName` and `matchType` must be defaulted to values that mean "all fields"
+MultiMatchQuery | fieldNames<String>, multiMatchType, query | Unknown
+RangeQuery | fieldName, gt, gte, lt, lte | The given field matches the constraints
+StringQuery | query | Unknown
+TermQuery | fieldName, term | The given field has the exact value
+
+Unfortunately, although `trackCount` is a parameter on the `Album` object, I can't make the following filter for albums work; nor can I get it returned from  the Tenzing service as a result field:
+
+```javascript
+"__type": "com.amazon.music.search.model#RangeQuery",
+"fieldName': "trackCount",
+"gte": "4"
+```
 
 Analysis
 --------
