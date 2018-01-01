@@ -88,6 +88,7 @@ class AmazonMusic:
     self.customerId=appConfig['customerId']
     self.deviceType=appConfig['deviceType']
     self.territory=appConfig['musicTerritory']
+    self.locale=appConfig['i18n']['locale']
     self.region=appConfig['realm'][:2]
 
 
@@ -234,7 +235,7 @@ class AmazonMusic:
       'deviceType': self.deviceType,
       'musicTerritory': self.territory,
       'customerId': self.customerId,
-      'languageLocale': os.environ['LANG'][:5] or 'en_GB',
+      'languageLocale': self.locale,
       'requestContext': { 'customerInitiated': True },
       'query': {},
       'resultSpecs': []
