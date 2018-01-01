@@ -48,7 +48,7 @@ Short term:
 
 Medium term:
 
-* Ensure full Amazon Music subscriptions are supported
+* Ensure full Amazon Music Unlimited subscriptions are supported
 * Support other regions/territories (help needed!)
 * Better handling of a captcha during authentication
 
