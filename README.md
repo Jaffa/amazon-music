@@ -1,7 +1,8 @@
+
 AmazonMusic
 ===========
 
-_AmazonMusic_ is an open source Python 3 library, providing access to Amazon Music/Prime Music's streaming service. It enables new applications to be written that use Amazon's service.
+_AmazonMusic_ is an open source Python 2/3 library, providing access to Amazon Music/Prime Music's streaming service. It enables new applications to be written that use Amazon's service.
 
 This is similar to other projects for other streaming services. For example, for Spotify use [`librespot`](https://github.com/plietar/librespot) and [`python-librespot`](https://github.com/plietar/python-librespot/) - based on Spotify's [`libspotify`](https://developer.spotify.com/technologies/libspotify/). Unfortunately, Amazon [don't offer an Amazon Music SDK](https://forums.developer.amazon.com/questions/58421/amazon-music-api.html), and this seems to be the first attempt to reverse engineer one.
 
@@ -37,6 +38,7 @@ Features
 * Play station by ASIN
 * Play playlist by ASIN
 * Supports Amazon Music UK with Prime subscriptions
+* Supports Python 2 & Python 3
 
 ### Roadmap
 Short term:
@@ -70,18 +72,18 @@ Examples
 Several examples are included. To run them:
 
 1. Enure your working directory contains the `amazonmusic.py` library
-2. Set `PYTHONPATH` and run them in Python 3:
+2. Set `PYTHONPATH` and run them in Python:
 
 ```sh
-PYTHONPATH=. python3 examples/play-album.py
-PYTHONPATH=. python3 examples/play-station.py
-PYTHONPATH=. python3 examples/play-playlist.py
+PYTHONPATH=. python examples/play-album.py
+PYTHONPATH=. python examples/play-station.py
+PYTHONPATH=. python examples/play-playlist.py
 ```
 
 Default ASINs for albums, stations and playlists are defaulted within the examples, but alternatives can be provided as a command line argument. The `search.py` example can be used to find alternatives (although the raw JSON needs to be manually parsed at the moment):
 
 ```
-PYTHONPATH=. python3 examples/search.py Adele 25
+PYTHONPATH=. python examples/search.py Adele 25
 ```
 
 ```javascript
@@ -108,7 +110,7 @@ PYTHONPATH=. python3 examples/search.py Adele 25
 ```
 
 ```sh
-PYTHONPATH=. python3 examples/play-album.py B0170UQ0OC
+PYTHONPATH=. python examples/play-album.py B0170UQ0OC
 ```
 
 Background

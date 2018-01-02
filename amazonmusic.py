@@ -24,7 +24,11 @@ import os
 import requests
 import re
 import types
-from http.cookiejar import LWPCookieJar
+
+try:
+  from http.cookiejar import LWPCookieJar
+except ImportError:
+    from cookielib import LWPCookieJar
 
 AMAZON_MUSIC='https://music.amazon.co.uk'
 AMAZON_SIGNIN='https://www.amazon.co.uk/ap/signin'
@@ -200,6 +204,8 @@ class AmazonMusic:
     """
       Return albums that are in the library. Amazon considers all albums,
       however this filters the list to albums with only four or more items.
+
+      TODO The approach taken, of using search, doesn't work correctly: it isn't limiting it to albums that only have 4 or more tracks in your library. Maybe if we search _tracks_ instead?
     """
     return list(
         map(

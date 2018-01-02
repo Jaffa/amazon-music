@@ -14,6 +14,8 @@ Once authenticated, web portal is loaded and a JSON object, `amznMusic.appConfig
 
 The JSON calls themselves are to various HTTP endpoints and in addition to HTTP headers including the CSRF tokens, include an `X-Amz-Target` header. This looks like a fully-qualified Java class name, corresponding to the target action.
 
+Changes to `AmazonMusic` must be tested in both Python 2 and Python 3.
+
 Known Endpoints
 ---------------
 

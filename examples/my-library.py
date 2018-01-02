@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # Show the contents of the user's library.
 #
@@ -28,4 +28,4 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 # -- Display the user's library...
 #
 for a in am.listAlbums():
-  print('"%s" by %s: %d tracks' % (a.name, a.artist, a.trackCount))
+  print('[%s] "%s" by %s: %d tracks' % (a.id, a.name, a.artist, a.trackCount))
