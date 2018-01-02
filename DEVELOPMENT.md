@@ -48,7 +48,7 @@ Unfortunately, although `trackCount` is a parameter on the `Album` object, I can
 
 ```javascript
 "__type": "com.amazon.music.search.model#RangeQuery",
-"fieldName': "trackCount",
+"fieldName": "trackCount",
 "gte": "4"
 ```
 
