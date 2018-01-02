@@ -218,7 +218,7 @@ class AmazonMusic:
                     'asins': list(map(
                         lambda h: h['document']['asin'],
                         self.search(None, library_only=True, tracks=False, albums=True,
-                                          playlists=False, artists=False, stations=False)[0]['hits']
+                                          playlists=False, artists=False, stations=False)['library_albums']['hits']
                       )),
                     'features': [ 'popularity', 'expandTracklist', 'trackLibraryAvailability', 'collectionLibraryAvailability' ],
                     'requestedContent': 'MUSIC_SUBSCRIPTION',
@@ -269,9 +269,7 @@ class AmazonMusic:
       :param artists: (optional) Include artists in the results, defaults to true.
       :param stations: (optional) Include stations in the results, defaults to true - only makes sense if `library_only` is false.
     """
-
-    results = []
-    query_base = lambda: {
+    query_obj = {
       'deviceId': self.deviceId,
       'deviceType': self.deviceType,
       'musicTerritory': self.territory,
@@ -282,73 +280,65 @@ class AmazonMusic:
       'resultSpecs': []
     }
 
-    # -- Search the library...
+    # -- Set up the search object...
     #
-    query_library = query_base()
-    if query is None:
-      query_library['query'] = {
-        '__type': 'com.amazon.music.search.model#ExistsQuery',
-        'fieldName': 'asin'
-      }
+    if library_only:
+      def _set_q(q):
+        query_obj['query'] = q
     else:
-      query_library['query'] = {
-        '__type': 'com.amazon.music.search.model#MatchQuery',
-        'query': query
-      }
-
-    resultSpec = lambda n: {
-        'label': '%ss' % (n),
-        'documentSpecs': [{
-          'type': n,
-          'fields': ['__DEFAULT', 'artFull', 'fileExtension', 'isMusicSubscription', 'primeStatus']
-        }],
-        'maxResults': 30
-    }
-
-    if tracks:
-      query_library['resultSpecs'].append(resultSpec('library_track'))
-    if albums:
-      query_library['resultSpecs'].append(resultSpec('library_album'))
-    if playlists:
-      query_library['resultSpecs'].append(resultSpec('library_playlist'))
-    if artists:
-      query_library['resultSpecs'].append(resultSpec('library_artist'))
-
-    results.extend(self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_library)['results'])
-
-    # -- Search Amazon...
-    #
-    if not library_only:
-      query_amazon = query_base()
-      query_amazon['query']['__type'] = 'com.amazon.music.search.model#BooleanQuery'
-      query_amazon['query']['must'] = [
-        {
-          '__type': 'com.amazon.music.search.model#MatchQuery',
-          'query': query
-        },
-        {
+      query_obj['query'] = {
+        '__type': 'com.amazon.music.search.model#BooleanQuery',
+        'must': [ {} ],
+        'should': [{
           '__type': 'com.amazon.music.search.model#TermQuery',
           'fieldName': 'primeStatus',
           'term': 'PRIME'
-        }
-      ]
+        }]
+      }
+      def _set_q(q):
+        query_obj['query']['must'][0] = q
 
-      if tracks:
-        query_amazon['resultSpecs'].append(resultSpec('catalog_track'))
-      if albums:
-        query_amazon['resultSpecs'].append(resultSpec('catalog_album'))
-      if playlists:
-        query_amazon['resultSpecs'].append(resultSpec('catalog_playlist'))
-      if artists:
-        query_amazon['resultSpecs'].append(resultSpec('catalog_artist'))
-      if stations:
-        query_amazon['resultSpecs'].append(resultSpec('catalog_station'))
+    # -- Set up the query...
+    #
+    if query is None:
+      _set_q({
+        '__type': 'com.amazon.music.search.model#ExistsQuery',
+        'fieldName': 'asin'
+      })
+    else:
+      _set_q({
+        '__type': 'com.amazon.music.search.model#MatchQuery',
+        'query': query
+      })
 
-      results.extend(self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_amazon)['results'])
+    def _addResultSpec(**kwargs):
+      for type in kwargs:
+        if kwargs[type]:
+          resultSpec = lambda n: {
+            'label': '%ss' % (n),
+            'documentSpecs': [{
+              'type': n,
+              'fields': ['__DEFAULT', 'artFull', 'fileExtension', 'isMusicSubscription', 'primeStatus']
+            }],
+            'maxResults': 30
+          }
+          if type != 'station':
+            query_obj['resultSpecs'].append(resultSpec('library_%s' % (type)))
+          if not library_only:
+            query_obj['resultSpecs'].append(resultSpec('catalog_%s' % (type)))
+
+    _addResultSpec(track = tracks,
+                   album = albums,
+                   playlist = playlists,
+                   artist = artists,
+                   station = stations)
 
     ### TODO Convert into a better data structure
     ### TODO There seems to be a paging token
-    return results
+    return dict(map(
+             lambda r: [r['label'], r],
+             self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_obj)['results']
+           ))
 
 
 class Station:
