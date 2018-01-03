@@ -27,6 +27,7 @@ URL  | Target | Description
 /EU/api/mpqs/voiceenabled/getNextTracks | com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternalVoiceEnabledClient.getNextTracks | Get the next page for a queue
 /EU/api/search/v1_1/ | com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search | Perform a search
 /EU/api/muse/legacy/getBrowseRecommendations | com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations | Browse recommendations
+/EU/api/cirrus/ | n/a (normal POST data with `Operation` parameter) | Query library
 
 The `AmazonMusic.call` method can be used to call these APIs and get responses. This is used throughout the library, and can also be used directly (although this is discouraged, since those features should be rolled into the API).
 
@@ -102,3 +103,6 @@ When searching the catalogue, one of the constraints is `primeStatus = PRIME`:
 
 Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the alternative for Music Unlimited would be `isMusicSubscription == true`.
 
+### Library
+
+In `listAlbums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).

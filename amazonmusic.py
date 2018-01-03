@@ -204,32 +204,47 @@ class AmazonMusic:
     """
       Return albums that are in the library. Amazon considers all albums,
       however this filters the list to albums with only four or more items.
-
-      TODO The approach taken, of using search, doesn't work correctly: it isn't limiting it to albums that only have 4 or more tracks in your library. Maybe if we search _tracks_ instead?
     """
-    return list(
-        map(
-          lambda r: Album(self, r),
-          filter(
-            lambda f: f['trackCount'] >= 4,
-            self.call('muse/legacy/lookup',
-                  'com.amazon.musicensembleservice.MusicEnsembleService.lookup',
-                  {
-                    'asins': list(map(
-                        lambda h: h['document']['asin'],
-                        self.search(None, library_only=True, tracks=False, albums=True,
-                                          playlists=False, artists=False, stations=False)[0]['hits']
-                      )),
-                    'features': [ 'popularity', 'expandTracklist', 'trackLibraryAvailability', 'collectionLibraryAvailability' ],
-                    'requestedContent': 'MUSIC_SUBSCRIPTION',
-                    'deviceId': self.deviceId,
-                    'deviceType': self.deviceType,
-                    'musicTerritory': self.territory,
-                    'customerId': self.customerId 
-                  })['albumList']
-          )
-        )
-      )
+    ### TODO Handle nextResultsToken
+    return map(
+      lambda r: Album(self, r),
+      filter(
+        lambda r: r['numTracks'] >= 4 and r['metadata'].get('primeStatus') == 'PRIME',
+        self.call('cirrus/', None, {
+          'Operation': 'searchLibrary',
+          'ContentType': 'JSON',
+          'searchReturnType': 'ALBUMS',
+          'searchCriteria.member.1.attributeName': 'status',
+          'searchCriteria.member.1.comparisonType': 'EQUALS',
+          'searchCriteria.member.1.attributeValue': 'AVAILABLE',
+          'searchCriteria.member.2.attributeName': 'trackStatus',
+          'searchCriteria.member.2.comparisonType': 'IS_NULL',
+          'searchCriteria.member.2.attributeValue': None,
+          'albumArtUrlsSizeList.member.1': 'FULL',
+          'selectedColumns.member.1': 'albumArtistName',
+          'selectedColumns.member.2': 'albumName',
+          'selectedColumns.member.3': 'artistName',
+          'selectedColumns.member.4': 'objectId',
+          'selectedColumns.member.5': 'primaryGenre',
+          'selectedColumns.member.6': 'sortAlbumArtistName',
+          'selectedColumns.member.7': 'sortAlbumName',
+          'selectedColumns.member.8': 'sortArtistName',
+          'selectedColumns.member.9': 'albumCoverImageFull',
+          'selectedColumns.member.10': 'albumAsin',
+          'selectedColumns.member.11': 'artistAsin',
+          'selectedColumns.member.12': 'gracenoteId',
+          'sortCriteriaList': None,
+          'maxResults': 100,
+          'nextResultsToken': None,
+          'caller': 'getAllDataByMetaType',
+          'sortCriteriaList.member.1.sortColumn': 'sortAlbumName',
+          'sortCriteriaList.member.1.sortType': 'ASC',
+          'customerInfo.customerId': self.customerId,
+          'customerInfo.deviceId': self.deviceId,
+          'customerInfo.deviceType': self.deviceType,
+        })['searchLibraryResponse']['searchLibraryResult'].get('searchReturnItemList')
+    )
+  )
 
 
   def getPlaylist(self, albumId):
@@ -429,24 +444,42 @@ class Album:
       Internal use only.
 
       :param am: AmazonMusic object, used to make API calls.
-      :param json: JSON data structure for the album, from Amazon Music.
+      :param json: JSON data structure for the album, from Amazon Music. Supports
+                   both `muse` and `cirrus` formats.
     """
     self._am = am
     self.json = json
-    self.id = json['asin']
-    self.coverUrl = json['image']
-    self.name = json['title']
-    self.artist = json['artist']['name']
-    self.genre = json['productDetails'].get('primaryGenreName')
-    self.rating = json['reviews']['average']
-    self.trackCount = json['trackCount']
-    self.releaseDate = json['originalReleaseDate'] / 1000
+    if 'metadata' in json:
+      self.trackCount = json['numTracks']
+      self.json = json['metadata']
+      json = self.json
+      self.id = json['albumAsin']
+      self.coverUrl = json.get('albumCoverImageFull', json.get('albumCoverImageMedium'))
+      self.name = json['albumName']
+      self.artist = json['albumArtistName']
+      self.genre = json['primaryGenre']
+      self.rating = None
+      self.releaseDate = None
+    else:
+      self.id = json['asin']
+      self.coverUrl = json['image']
+      self.name = json['title']
+      self.artist = json['artist']['name']
+      self.genre = json['productDetails'].get('primaryGenreName')
+      self.rating = json['reviews']['average']
+      self.trackCount = json['trackCount']
+      self.releaseDate = json['originalReleaseDate'] / 1000
 
 
   def tracks(self):
     """
       Provide the list for the `Tracks` that make up this album.
     """
+    # If we've only got a summary, load the full data
+    if 'tracks' not in self.json:
+      a = self._am.getAlbum(self.id)
+      self.__init__(self._am, a.json)
+
     return list(map(lambda t: Track(self._am, t), self.json['tracks']))
 
 
@@ -573,6 +606,10 @@ class Track:
       if 'statusCode' in stream_json and stream_json['statusCode'] == 'MAX_CONCURRENCY_REACHED':
         raise Exception(stream_json['statusCode'])
 
-      self._url = stream_json['contentResponse']['urlList'][0]
+      try:
+        self._url = stream_json['contentResponse']['urlList'][0]
+      except KeyError as e:
+        e.args = ('%s not found in %s' % (e.args[0], json.dumps(stream_json, sort_keys = True)), )
+        raise
 
     return self._url

@@ -43,10 +43,10 @@ Features
 ### Roadmap
 Short term:
 
-* Searching (in progress)
+* Searching [in progress]
+* Library access - saved albums, playlists etc. [in progress]
 * Browse recommendations
 * Browse stations
-* Library access (e.g. saved albums, playlists etc.)
 
 Medium term:
 

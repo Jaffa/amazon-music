@@ -18,8 +18,6 @@
 
 from amazonmusic import AmazonMusic
 from getpass import getpass
-import sys
-import json
 
 # -- Create a session...
 #
