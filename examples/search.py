@@ -33,7 +33,7 @@ import json
 
 # -- Create a session...
 #
-am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
+am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
 
 # -- Check syntax...
 if len(sys.argv) < 2:
@@ -44,3 +44,4 @@ if len(sys.argv) < 2:
 #
 results = am.search(' '.join(sys.argv[1:]))
 print(json.dumps(results, sort_keys=True, indent=2))
+

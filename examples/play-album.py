@@ -22,7 +22,7 @@ import subprocess, os, sys
 
 # -- Create a session...
 #
-am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
+am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
 
 # -- Play an album...
 #

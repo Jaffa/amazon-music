@@ -21,7 +21,7 @@ from getpass import getpass
 
 # -- Create a session...
 #
-am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
+am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
 
 # -- Display the user's library...
 #

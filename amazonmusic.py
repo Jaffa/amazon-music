@@ -30,9 +30,16 @@ try:
 except ImportError:
     from cookielib import LWPCookieJar
 
-AMAZON_MUSIC='https://music.amazon.co.uk'
+AMAZON_MUSIC='https://music.amazon.co.uk' # TODO Go to https://music.amazon.com and get redirected?
 AMAZON_SIGNIN='https://www.amazon.co.uk/ap/signin'
 USER_AGENT='Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
+
+# Overrides for realm -> region, if the first two characters can't be used, based on _digitalMusicPlayer
+REGION_MAP = {
+  'USAmazon': 'NA',
+  'EUAmazon': 'EU',
+  'FEAmazon': 'FE'
+}
 
 class AmazonMusic:
   """
@@ -43,7 +50,7 @@ class AmazonMusic:
 
       >>> from amazonmusic import AmazonMusic
       >>> from getpass import getpass
-      >>> am = AmazonMusic(credentials = lambda: [input('Email: '),
+      >>> am = AmazonMusic(credentials = lambda: [raw_input('Email: '),
                                                   getpass('Amazon password: ')])
   """
 
@@ -93,7 +100,13 @@ class AmazonMusic:
     self.deviceType=appConfig['deviceType']
     self.territory=appConfig['musicTerritory']
     self.locale=appConfig['i18n']['locale']
-    self.region=appConfig['realm'][:2]
+    self.region=REGION_MAP.get(appConfig['realm'], appConfig['realm'][:2])
+
+    urlMap = dict(map(lambda h: [ h['lang'], h['url'] ], appConfig['hrefLangList']))
+    language = appConfig['customerLanguage'].replace('_', '-')
+    self.url=urlMap.get(language,
+             urlMap.get(language.partition('-')[0],
+                 urlMap['x-default']))
 
 
   def _authenticate(self, credentials, r):
@@ -103,7 +116,6 @@ class AmazonMusic:
       :param credentials: Provider of credential information.
       :param r: The response object from the attempt to access `AMAZON_MUSIC` homepage.
     """
-
     if type(credentials) == types.FunctionType:
       credentials = credentials()
 
@@ -112,7 +124,7 @@ class AmazonMusic:
 
     soup = BeautifulSoup(r.content, "html.parser")
     query = { "email": credentials[0], "password": credentials[1] }
-  
+
     for field in soup.form.find_all("input"):
       if field.get("type") == "hidden":
         query[field.get("name")] = field.get("value")
@@ -122,7 +134,7 @@ class AmazonMusic:
     r = self.session.post(soup.form.get("action"), headers = {
           'User-Agent': USER_AGENT,
             'Referer': r.history[0].headers['Location'],
-            'Upgrade-Insecure-Requests': 1,
+            'Upgrade-Insecure-Requests': '1',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en-GB;q=0.7,chrome://global/locale/intl.properties;q=0.3'
           },
@@ -154,7 +166,7 @@ class AmazonMusic:
       query_headers['Content-Encoding'] = 'amz-1.0'
       query_data = json.dumps(query)
 
-    r = self.session.post('%s/%s/api/%s' % (AMAZON_MUSIC, self.region, endpoint), headers = query_headers, data = query_data)
+    r = self.session.post('%s/%s/api/%s' % (self.url, self.region, endpoint), headers = query_headers, data = query_data)
     self.session.cookies.save()
     return r.json()
 
