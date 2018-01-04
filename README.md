@@ -91,6 +91,7 @@ Several examples are included. To run them:
 PYTHONPATH=. python examples/play-album.py
 PYTHONPATH=. python examples/play-station.py
 PYTHONPATH=. python examples/play-playlist.py
+PYTHONPATH=. python examples/my-library.py
 ```
 
 Default ASINs for albums, stations and playlists are defaulted within the examples, but alternatives can be provided as a command line argument. The `search.py` example can be used to find alternatives (although the raw JSON needs to be manually parsed at the moment):
