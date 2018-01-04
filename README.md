@@ -31,12 +31,25 @@ from getpass import getpass
 am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
 ```
 
+### Dependencies
+
+The [Requests](http://docs.python-requests.org/en/master/) and [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) libraries are required beyond the standard Python libraries. These can be usually be installed using your standard package manager or `pip`:
+
+Operating environment    | Python version | Packages
+-------------------------|----------------|----------------
+Debian, Ubuntu           | 2              | `python-requests`, `python-bs4`
+Debian, Ubuntu           | 3              | `python3-requests`, `python3-bs4`
+cygwin                   | 2              | `python2-requests`, `python2-bs4`
+cygwin                   | 3              | `python3-requests`, `python3-bs4`
+pip (e.g. OS X Homebrew) | 2 & 3          | `requests`, `beautifulsoup4`
+
 Features
 --------
 
 * Play album by ASIN
 * Play station by ASIN
 * Play playlist by ASIN
+* Library access - saved albums
 * Supports Amazon Music UK with Prime subscriptions
 * Supports Python 2 & Python 3
 
@@ -44,14 +57,14 @@ Features
 Short term:
 
 * Searching [in progress]
-* Library access - saved albums, playlists etc. [in progress]
+* Support other regions/territories [in progress]
+* Library access - saved playlists
 * Browse recommendations
 * Browse stations
 
 Medium term:
 
 * Ensure full Amazon Music Unlimited subscriptions are supported
-* Support other regions/territories (help needed!)
 * Better handling of a captcha during authentication
 
 Possible long term:

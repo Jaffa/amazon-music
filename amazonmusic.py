@@ -30,11 +30,11 @@ try:
 except ImportError:
     from cookielib import LWPCookieJar
 
-AMAZON_MUSIC='https://music.amazon.co.uk' # TODO Go to https://music.amazon.com and get redirected?
-AMAZON_SIGNIN='https://www.amazon.co.uk/ap/signin'
+AMAZON_MUSIC='https://music.amazon.co.uk' # TODO Go to https://music.amazon.com and get redirected? Will get redirected back to local auth page, and so will need to handle multiple redirects
+AMAZON_SIGNIN='/ap/signin'
 USER_AGENT='Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
 
-# Overrides for realm -> region, if the first two characters can't be used, based on _digitalMusicPlayer
+# Overrides for realm -> region, if the first two characters can't be used, based on digitalMusicPlayer
 REGION_MAP = {
   'USAmazon': 'NA',
   'EUAmazon': 'EU',
@@ -90,6 +90,9 @@ class AmazonMusic:
     if appConfig is None:
       raise Exception("Unable to find appConfig")
 
+    if appConfig['isRecognizedCustomer'] == 0:
+      raise Exception('TODO Need to handle unauthenticated user: this is what you get for https://music.amazon.com/')
+
     # -- Store session variables...
     #
     self.deviceId=appConfig['deviceId']
@@ -107,6 +110,7 @@ class AmazonMusic:
     self.url=urlMap.get(language,
              urlMap.get(language.partition('-')[0],
                  urlMap['x-default']))
+    # TODO Or just use appConfig['serverInfo']['returnUrlServer']?
 
 
   def _authenticate(self, credentials, r):

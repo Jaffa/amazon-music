@@ -31,6 +31,8 @@ URL  | Target | Description
 
 The `AmazonMusic.call` method can be used to call these APIs and get responses. This is used throughout the library, and can also be used directly (although this is discouraged, since those features should be rolled into the API).
 
+Declan McAleese verified that US use had consistent URLs, but with a `/NA/` prefix rather than `/EU/`. This has since been verified by looking at a de-minified `digitalMusicWebPlayer.js` and its mapping from `realm` to URL prefix.
+
 ### Searching
 
 A number of search models exist:
@@ -106,3 +108,4 @@ Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the
 ### Library
 
 In `listAlbums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).
+
