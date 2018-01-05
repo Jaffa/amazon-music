@@ -18,10 +18,12 @@
 
 from amazonmusic import AmazonMusic
 from getpass import getpass
+try: input = raw_input
+except NameError: pass
 
 # -- Create a session...
 #
-am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
+am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
 
 # -- Display the user's library...
 #

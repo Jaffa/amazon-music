@@ -28,7 +28,12 @@ _Note:_ hardcoding your Amazon credentials is a bad idea! `AmazonMusic` can be p
 ```python
 from getpass import getpass
 
-am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
+# Make Python 2 work like Python 3
+try: input = raw_input
+except NameError: pass
+
+# Prompt the user for the credentials, when needed
+am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
 ```
 
 ### Dependencies

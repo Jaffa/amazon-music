@@ -20,6 +20,8 @@ from amazonmusic import AmazonMusic
 from getpass import getpass
 import sys
 import json
+try: input = raw_input
+except NameError: pass
 
 #import requests
 #import logging
@@ -33,7 +35,7 @@ import json
 
 # -- Create a session...
 #
-am = AmazonMusic(credentials = lambda: [raw_input('Email: '), getpass('Amazon password: ')])
+am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
 
 # -- Check syntax...
 if len(sys.argv) < 2:
