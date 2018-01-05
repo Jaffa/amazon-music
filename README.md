@@ -55,14 +55,13 @@ Features
 * Play station by ASIN
 * Play playlist by ASIN
 * Library access - saved albums
-* Supports Amazon Music UK with Prime subscriptions
+* Supports Amazon Music with Prime subscriptions, with multiple regions [needs testing]
 * Supports Python 2 & Python 3
 
 ### Roadmap
 Short term:
 
 * Searching [in progress]
-* Support other regions/territories [in progress]
 * Library access - saved playlists
 * Browse recommendations
 * Browse stations

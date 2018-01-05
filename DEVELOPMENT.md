@@ -6,6 +6,8 @@ Overview
 The _AmazonMusic_ library works in two parts:
 
 1. Authenticating through the Amazon login portal, and saving the cookies in a cookie jar (by default `~/.amazonmusic-cookies.dat`)
+  * To support multiple regions, we fetch `music.amazon.com`, and then get bounced through to the user's local version
+  * In order to speed up subsequent access (and avoid reauthentication traps), the resulting local version is stored in the cookie jar in a fake cookie (see `COOKIE_TARGET`)
 2. Accessing the JSON API, used by the Amazon Music web interface, to access stations, tracks etc.
 
 It is important, particularly during (1), to appear to be a normal browser - paying particular attention to `Accept` and `Accept-Language` headers.
@@ -109,3 +111,14 @@ Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the
 
 In `listAlbums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).
 
+TODO
+----
+
+- [x] Support other regions/territories [needs testing]
+- [ ] Return better results from search API
+- [ ] Handle paging in `listAlbums`
+- [ ] Library access - saved playlists
+- [ ] Browse recommendations
+- [ ] Browse stations
+- [ ] Ensure full Amazon Music Unlimited subscriptions are supported
+- [ ] Better handling of a captcha during authentication

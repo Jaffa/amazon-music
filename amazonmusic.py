@@ -26,12 +26,14 @@ import re
 import types
 
 try:
-  from http.cookiejar import LWPCookieJar
+  from http.cookiejar import LWPCookieJar, Cookie
 except ImportError:
-    from cookielib import LWPCookieJar
+    from cookielib import LWPCookieJar, Cookie
 
-AMAZON_MUSIC='https://music.amazon.co.uk' # TODO Go to https://music.amazon.com and get redirected? Will get redirected back to local auth page, and so will need to handle multiple redirects
+AMAZON_MUSIC='https://music.amazon.com'
 AMAZON_SIGNIN='/ap/signin'
+AMAZON_FORCE_SIGNIN='/gp/dmusic/cloudplayer/forceSignIn'
+COOKIE_TARGET='_AmazonMusic-targetUrl' # Placholder cookie to store target server in
 USER_AGENT='Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
 
 # Overrides for realm -> region, if the first two characters can't be used, based on digitalMusicPlayer
@@ -69,29 +71,37 @@ class AmazonMusic:
     if os.path.isfile(cookiepath):
       self.session.cookies.load()
 
+    targetCookie = next((c for c in self.session.cookies if c.name == COOKIE_TARGET), None)
+    if targetCookie is None:
+      targetCookie = Cookie(1, COOKIE_TARGET, AMAZON_MUSIC, '0', False, ':invalid', True, ':invalid', '', False, True, 2147483647, False, 'Used to store target music URL', 'https://github.com/Jaffa/amazon-music/', {})
+
     # -- Fetch the homepage, authenticating if necessary...
     #
-    r = self.session.get(AMAZON_MUSIC, headers = {'User-Agent': USER_AGENT})
+    self.__c = credentials
+    r = self.session.get(targetCookie.value, headers = {'User-Agent': USER_AGENT})
     self.session.cookies.save()
     os.chmod(cookiepath, 0o600)
 
-    if r.history and r.history[0].status_code == 302 and AMAZON_SIGNIN in r.history[0].headers['Location']:
-      r = self._authenticate(credentials, r)
-
-    # -- Parse out the JSON config object...
-    #
     appConfig = None
-    for line in r.iter_lines(decode_unicode=True):
-      if 'amznMusic.appConfig = ' in line:
-        appConfig = json.loads(re.sub(r'^[^\{]*', '',
-                               re.sub(r';$', '', line)))
-        break
-    
-    if appConfig is None:
-      raise Exception("Unable to find appConfig")
+    while appConfig is None:
+      while r.history and any(h.status_code == 302 and AMAZON_SIGNIN in h.headers['Location'] for h in r.history):
+        r = self._authenticate(r)
 
-    if appConfig['isRecognizedCustomer'] == 0:
-      raise Exception('TODO Need to handle unauthenticated user: this is what you get for https://music.amazon.com/')
+      # -- Parse out the JSON config object...
+      #
+      for line in r.iter_lines(decode_unicode=True):
+        if 'amznMusic.appConfig = ' in line:
+          appConfig = json.loads(re.sub(r'^[^\{]*', '',
+                                 re.sub(r';$', '', line)))
+          break
+
+      if appConfig is None:
+        raise Exception("Unable to find appConfig in %s" % (r.content))
+
+      if appConfig['isRecognizedCustomer'] == 0:
+        r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers = {'User-Agent': USER_AGENT})
+        appConfig = None
+    self.__c = None
 
     # -- Store session variables...
     #
@@ -104,30 +114,27 @@ class AmazonMusic:
     self.territory=appConfig['musicTerritory']
     self.locale=appConfig['i18n']['locale']
     self.region=REGION_MAP.get(appConfig['realm'], appConfig['realm'][:2])
+    self.url='https://' + appConfig['serverInfo']['returnUrlServer']
 
-    urlMap = dict(map(lambda h: [ h['lang'], h['url'] ], appConfig['hrefLangList']))
-    language = appConfig['customerLanguage'].replace('_', '-')
-    self.url=urlMap.get(language,
-             urlMap.get(language.partition('-')[0],
-                 urlMap['x-default']))
-    # TODO Or just use appConfig['serverInfo']['returnUrlServer']?
+    targetCookie.value = self.url
+    self.session.cookies.set_cookie(targetCookie)
+    self.session.cookies.save()
 
 
-  def _authenticate(self, credentials, r):
+  def _authenticate(self, r):
     """
       Handles the sign-in process with Amazon's login page.
 
-      :param credentials: Provider of credential information.
-      :param r: The response object from the attempt to access `AMAZON_MUSIC` homepage.
+      :param r: The response object pointing to the Amazon signin page.
     """
-    if type(credentials) == types.FunctionType:
-      credentials = credentials()
+    if type(self.__c) == types.FunctionType:
+      self.__c = self.__c()
 
-    if not isinstance(credentials, list) or len(credentials) != 2:
-      raise Exception("Invalid credentials: expected list of two elements, but got " + type(credentials))
+    if not isinstance(self.__c, list) or len(self.__c) != 2:
+      raise Exception("Invalid self.__c: expected list of two elements, but got " + type(self.__c))
 
     soup = BeautifulSoup(r.content, "html.parser")
-    query = { "email": credentials[0], "password": credentials[1] }
+    query = { "email": self.__c[0], "password": self.__c[1] }
 
     for field in soup.form.find_all("input"):
       if field.get("type") == "hidden":
@@ -411,7 +418,6 @@ class Station:
       yield Track(self._am, tracks.pop(0))
     
       if not tracks:
-        print("[DEBUG] Running out of tracks - loading more")
         data = self._am.call('mpqs/voiceenabled/getNextTracks',
                              'com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternalVoiceEnabledClient.getNextTracks',
                              { 'pageToken': self._pageToken,
