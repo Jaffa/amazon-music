@@ -32,7 +32,7 @@ asin = sys.argv[1] if len(sys.argv) == 2 else 'B00J9AEZ7G'
 album = am.getAlbum(asin)
 print('Art: %s\nPlaying album %s by %s (%d/5)...' % (album.coverUrl, album.name, album.artist, album.rating))
 
-for t in album.tracks():
+for t in album.tracks:
   print("Playing %s..." % (t.name))
-  os.system("cvlc --play-and-exit '%s'" % (t.getUrl()))
+  os.system("cvlc --play-and-exit '%s'" % (t.streamUrl))
   print('-------------------------')

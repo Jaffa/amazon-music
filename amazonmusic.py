@@ -52,7 +52,7 @@ class AmazonMusic:
 
       >>> from amazonmusic import AmazonMusic
       >>> from getpass import getpass
-      >>> am = AmazonMusic(credentials = lambda: [raw_input('Email: '),
+      >>> am = AmazonMusic(credentials = lambda: [input('Email: '),
                                                   getpass('Amazon password: ')])
   """
 
@@ -389,6 +389,7 @@ class Station:
       * `id` - ID of the station (Amazon ASIN)
       * `name` - Name of the station.
       * `coverUrl` - URL containing cover art for the station.
+      * `tracks` - Iterable generator for the `Tracks` that make up this station.
   """
 
   def __init__(self, am, asin, json):
@@ -407,6 +408,7 @@ class Station:
     self._pageToken = json['queue']['pageToken']
 
 
+  @property
   def tracks(self):
     """
       Provides an iterable generator for the `Tracks` that make up this
@@ -448,7 +450,7 @@ class Album:
       * `rating` - Average review score (out of 5).
       * `trackCount` - Number of tracks.
       * `releaseDate` - UNIX timestamp of the original release date.
-
+      * `tracks` - Iterable generator for the `Tracks` that make up this station.
   """
 
   def __init__(self, am, json):
@@ -483,6 +485,7 @@ class Album:
       self.releaseDate = json['originalReleaseDate'] / 1000
 
 
+  @property
   def tracks(self):
     """
       Provide the list for the `Tracks` that make up this album.
@@ -508,6 +511,7 @@ class Playlist:
       * `genre` - Genre of the album.
       * `rating` - Average review score (out of 5).
       * `trackCount` - Number of tracks.
+      * `tracks` - Iterable generator for the `Tracks` that make up this station.
   """
 
   def __init__(self, am, json):
@@ -527,6 +531,7 @@ class Playlist:
     self.trackCount = json['trackCount']
 
 
+  @property
   def tracks(self):
     """
       Provide the list for the `Tracks` that make up this album.
@@ -546,10 +551,7 @@ class Track:
       * `album` - Album containing the track
       * `albumArtist` - Primary artist for the album
       * `coverUrl` - URL containing cover art for the track/album.
-
-    Key method is:
-
-      * `getUrl()` - Returns an M3U playlist allowing the track to be streamed.
+      * `streamUrl` - URL of M3U playlist allowing the track to be streamed.
   """
 
   def __init__(self, am, data):
@@ -589,7 +591,8 @@ class Track:
       raise
 
 
-  def getUrl(self):
+  @property
+  def streamUrl(self):
     """
       Return the URL for an M3U playlist for the track, allowing it to be streamed.
       The playlist seems to consist of individual chunks of the song, in ~10s segments,

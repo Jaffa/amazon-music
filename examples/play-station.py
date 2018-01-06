@@ -32,7 +32,7 @@ asin = sys.argv[1] if len(sys.argv) == 2 else 'A2UW0MECRAWILL'
 station = am.createStation(asin)
 print('Art: %s\nPlaying station %s...' % (station.coverUrl, station.name))
 
-for t in station.tracks():
+for t in station.tracks:
   print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
-  os.system("cvlc --play-and-exit '%s'" % (t.getUrl()))
+  os.system("cvlc --play-and-exit '%s'" % (t.streamUrl))
   print('-------------------------')

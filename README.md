@@ -18,7 +18,7 @@ am = AmazonMusic(credentials = ['foo@example.com', 'xyzzy'])
 station = am.createStation('A2UW0MECRAWILL')
 print('Playing station %s...' % (station.name))
 
-for t in station.tracks():
+for t in station.tracks:
   print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
   os.system("cvlc --play-and-exit '%s'" % (t.getUrl()))
 ```
