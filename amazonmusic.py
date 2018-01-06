@@ -228,46 +228,52 @@ class AmazonMusic:
       Return albums that are in the library. Amazon considers all albums,
       however this filters the list to albums with only four or more items.
     """
-    ### TODO Handle nextResultsToken
-    return map(
-      lambda r: Album(self, r),
-      filter(
-        lambda r: r['numTracks'] >= 4 and r['metadata'].get('primeStatus') == 'PRIME',
-        self.call('cirrus/', None, {
-          'Operation': 'searchLibrary',
-          'ContentType': 'JSON',
-          'searchReturnType': 'ALBUMS',
-          'searchCriteria.member.1.attributeName': 'status',
-          'searchCriteria.member.1.comparisonType': 'EQUALS',
-          'searchCriteria.member.1.attributeValue': 'AVAILABLE',
-          'searchCriteria.member.2.attributeName': 'trackStatus',
-          'searchCriteria.member.2.comparisonType': 'IS_NULL',
-          'searchCriteria.member.2.attributeValue': None,
-          'albumArtUrlsSizeList.member.1': 'FULL',
-          'selectedColumns.member.1': 'albumArtistName',
-          'selectedColumns.member.2': 'albumName',
-          'selectedColumns.member.3': 'artistName',
-          'selectedColumns.member.4': 'objectId',
-          'selectedColumns.member.5': 'primaryGenre',
-          'selectedColumns.member.6': 'sortAlbumArtistName',
-          'selectedColumns.member.7': 'sortAlbumName',
-          'selectedColumns.member.8': 'sortArtistName',
-          'selectedColumns.member.9': 'albumCoverImageFull',
-          'selectedColumns.member.10': 'albumAsin',
-          'selectedColumns.member.11': 'artistAsin',
-          'selectedColumns.member.12': 'gracenoteId',
-          'sortCriteriaList': None,
-          'maxResults': 100,
-          'nextResultsToken': None,
-          'caller': 'getAllDataByMetaType',
-          'sortCriteriaList.member.1.sortColumn': 'sortAlbumName',
-          'sortCriteriaList.member.1.sortType': 'ASC',
-          'customerInfo.customerId': self.customerId,
-          'customerInfo.deviceId': self.deviceId,
-          'customerInfo.deviceType': self.deviceType,
-        })['searchLibraryResponse']['searchLibraryResult'].get('searchReturnItemList')
-    )
-  )
+    query = {
+      'Operation': 'searchLibrary',
+      'ContentType': 'JSON',
+      'searchReturnType': 'ALBUMS',
+      'searchCriteria.member.1.attributeName': 'status',
+      'searchCriteria.member.1.comparisonType': 'EQUALS',
+      'searchCriteria.member.1.attributeValue': 'AVAILABLE',
+      'searchCriteria.member.2.attributeName': 'trackStatus',
+      'searchCriteria.member.2.comparisonType': 'IS_NULL',
+      'searchCriteria.member.2.attributeValue': None,
+      'albumArtUrlsSizeList.member.1': 'FULL',
+      'selectedColumns.member.1': 'albumArtistName',
+      'selectedColumns.member.2': 'albumName',
+      'selectedColumns.member.3': 'artistName',
+      'selectedColumns.member.4': 'objectId',
+      'selectedColumns.member.5': 'primaryGenre',
+      'selectedColumns.member.6': 'sortAlbumArtistName',
+      'selectedColumns.member.7': 'sortAlbumName',
+      'selectedColumns.member.8': 'sortArtistName',
+      'selectedColumns.member.9': 'albumCoverImageFull',
+      'selectedColumns.member.10': 'albumAsin',
+      'selectedColumns.member.11': 'artistAsin',
+      'selectedColumns.member.12': 'gracenoteId',
+      'sortCriteriaList': None,
+      'maxResults': 100,
+      'nextResultsToken': None,
+      'caller': 'getAllDataByMetaType',
+      'sortCriteriaList.member.1.sortColumn': 'sortAlbumName',
+      'sortCriteriaList.member.1.sortType': 'ASC',
+      'customerInfo.customerId': self.customerId,
+      'customerInfo.deviceId': self.deviceId,
+      'customerInfo.deviceType': self.deviceType,
+    }
+
+    data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult'];
+    results = []
+    results.extend(data['searchReturnItemList'])
+    while results:
+      r = results.pop(0)
+      if r['numTracks'] >= 4 and r['metadata'].get('primeStatus') == 'PRIME':
+        yield Album(self, r)
+
+      if not results and data['nextResultsToken']:
+        query['nextResultsToken'] = data['nextResultsToken']
+        data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult'];
+        results.extend(data['searchReturnItemList']);
 
 
   def getPlaylist(self, albumId):

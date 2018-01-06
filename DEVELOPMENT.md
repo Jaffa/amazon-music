@@ -116,7 +116,7 @@ TODO
 
 - [x] Support other regions/territories [needs testing]
 - [ ] Return better results from search API
-- [ ] Handle paging in `listAlbums`
+- [x] Handle paging in `listAlbums`
 - [ ] Library access - saved playlists
 - [ ] Browse recommendations
 - [ ] Browse stations
