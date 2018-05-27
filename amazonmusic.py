@@ -65,7 +65,7 @@ class AmazonMusic:
         :param cookies: (optional) File path to be used for the cookie jar.
         """
 
-        cookie_path = cookies or '%s/.amazonmusic-cookies.dat' % (os.environ['HOME'])
+        cookie_path = cookies or '{}/.amazonmusic-cookies.dat'.format(os.environ['HOME'])
         self.session = requests.Session()
         self.session.cookies = LWPCookieJar(cookie_path)
         if os.path.isfile(cookie_path):
@@ -97,7 +97,7 @@ class AmazonMusic:
                     break
 
             if app_config is None:
-                raise Exception("Unable to find appConfig in %s" % r.content)
+                raise Exception("Unable to find appConfig in {}".format(r.content))
 
             if app_config['isRecognizedCustomer'] == 0:
                 r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers={'User-Agent': USER_AGENT})
@@ -176,7 +176,7 @@ class AmazonMusic:
             query_headers['Content-Encoding'] = 'amz-1.0'
             query_data = json.dumps(query)
 
-        r = self.session.post('%s/%s/api/%s' % (self.url, self.region, endpoint), headers=query_headers,
+        r = self.session.post('/{}/api/{}'.format(self.url, self.region, endpoint), headers=query_headers,
                               data=query_data)
         self.session.cookies.save()
         return r.json()
@@ -380,7 +380,7 @@ class AmazonMusic:
                 if kwargs[type_]:
                     def result_spec(n):
                         return {
-                            'label': '%ss' % n,
+                            'label': '{}s'.format(n),  # Before it was %ss, is {}s right?
                             'documentSpecs': [{
                                 'type': n,
                                 'fields': [
@@ -394,9 +394,9 @@ class AmazonMusic:
                             'maxResults': 30
                         }
                     if type_ != 'station':
-                        query_obj['resultSpecs'].append(result_spec('library_%s' % type_))
+                        query_obj['resultSpecs'].append(result_spec('library_{}'.format(type_)))
                     if not library_only:
-                        query_obj['resultSpecs'].append(result_spec('catalog_%s' % type_))
+                        query_obj['resultSpecs'].append(result_spec('catalog_{}'.format(type_)))
 
         _add_result_spec(
             track=tracks,
@@ -620,7 +620,7 @@ class Track:
 
             self.duration = data.get('durationInSeconds', data.get('duration'))
         except KeyError as e:
-            e.args = ('%s not found in %s' % (e.args[0], json.dumps(data, sort_keys=True)),)
+            e.args = ('{} not found in {}'.format(e.args[0], json.dumps(data, sort_keys=True)),)
             raise
 
     @property
@@ -659,7 +659,6 @@ class Track:
             try:
                 self._url = stream_json['contentResponse']['urlList'][0]
             except KeyError as e:
-                e.args = ('%s not found in %s' % (e.args[0], json.dumps(stream_json, sort_keys=True)),)
+                e.args = ('{} not found in {}'.format(e.args[0], json.dumps(stream_json, sort_keys=True)),)
                 raise
-
         return self._url
