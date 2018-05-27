@@ -181,7 +181,7 @@ class AmazonMusic:
         self.session.cookies.save()
         return r.json()
 
-    def createStation(self, station_id):
+    def create_station(self, station_id):
         """
         Create a station that can be played.
 
@@ -205,7 +205,7 @@ class AmazonMusic:
             )
         )
 
-    def getAlbum(self, album_id):
+    def get_album(self, album_id):
         """
         Get an album that can be played.
 
@@ -233,7 +233,8 @@ class AmazonMusic:
             )['albumList'][0]
         )
 
-    def listAlbums(self):
+    @property
+    def albums(self):
         """
         Return albums that are in the library. Amazon considers all albums,
         however this filters the list to albums with only four or more items.
@@ -272,7 +273,7 @@ class AmazonMusic:
             'customerInfo.deviceType': self.deviceType,
         }
 
-        data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult'];
+        data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
         results = []
         results.extend(data['searchReturnItemList'])
         while results:
@@ -282,10 +283,10 @@ class AmazonMusic:
 
             if not results and data['nextResultsToken']:
                 query['nextResultsToken'] = data['nextResultsToken']
-                data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult'];
-                results.extend(data['searchReturnItemList']);
+                data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
+                results.extend(data['searchReturnItemList'])
 
-    def getPlaylist(self, album_id):
+    def get_playlists(self, album_id):
         """
         Get a playlist that can be played.
 
@@ -374,27 +375,36 @@ class AmazonMusic:
                 'query': query
             })
 
-        def _addResultSpec(**kwargs):
-            for type in kwargs:
-                if kwargs[type]:
-                    result_spec = lambda n: {
-                        'label': '%ss' % (n),
-                        'documentSpecs': [{
-                            'type': n,
-                            'fields': ['__DEFAULT', 'artFull', 'fileExtension', 'isMusicSubscription', 'primeStatus']
-                        }],
-                        'maxResults': 30
-                    }
-                    if type != 'station':
-                        query_obj['resultSpecs'].append(result_spec('library_%s' % (type)))
+        def _add_result_spec(**kwargs):
+            for type_ in kwargs:
+                if kwargs[type_]:
+                    def result_spec(n):
+                        return {
+                            'label': '%ss' % n,
+                            'documentSpecs': [{
+                                'type': n,
+                                'fields': [
+                                    '__DEFAULT',
+                                    'artFull',
+                                    'fileExtension',
+                                    'isMusicSubscription',
+                                    'primeStatus'
+                                ]
+                            }],
+                            'maxResults': 30
+                        }
+                    if type_ != 'station':
+                        query_obj['resultSpecs'].append(result_spec('library_%s' % type_))
                     if not library_only:
-                        query_obj['resultSpecs'].append(result_spec('catalog_%s' % (type)))
+                        query_obj['resultSpecs'].append(result_spec('catalog_%s' % type_))
 
-        _addResultSpec(track=tracks,
-                       album=albums,
-                       playlist=playlists,
-                       artist=artists,
-                       station=stations)
+        _add_result_spec(
+            track=tracks,
+            album=albums,
+            playlist=playlists,
+            artist=artists,
+            station=stations
+        )
 
         # TODO Convert into a better data structure
         # TODO There seems to be a paging token
@@ -417,20 +427,20 @@ class Station:
         * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
-    def __init__(self, am, asin, json):
+    def __init__(self, am, asin, data):
         """
           Internal use only.
 
           :param am: AmazonMusic object, used to make API calls.
           :param asin: Station ASIN.
-          :param json: JSON data structure for the station, from Amazon Music.
+          :param data: JSON data structure for the station, from Amazon Music.
         """
         self._am = am
         self.id = asin
-        self.json = json
-        self.coverUrl = json['queue']['queueMetadata']['imageUrlMap']['FULL']
-        self.name = json['queue']['queueMetadata']['title']
-        self._pageToken = json['queue']['pageToken']
+        self.json = data
+        self.coverUrl = data['queue']['queueMetadata']['imageUrlMap']['FULL']
+        self.name = data['queue']['queueMetadata']['title']
+        self._pageToken = data['queue']['pageToken']
 
     @property
     def tracks(self):
@@ -479,35 +489,35 @@ class Album:
         * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
-    def __init__(self, am, json):
+    def __init__(self, am, data):
         """
         Internal use only.
 
         :param am: AmazonMusic object, used to make API calls.
-        :param json: JSON data structure for the album, from Amazon Music. Supports both `muse` and `cirrus` formats.
+        :param data: JSON data structure for the album, from Amazon Music. Supports both `muse` and `cirrus` formats.
         """
         self._am = am
-        self.json = json
-        if 'metadata' in json:
-            self.trackCount = json['numTracks']
-            self.json = json['metadata']
-            json = self.json
-            self.id = json['albumAsin']
-            self.coverUrl = json.get('albumCoverImageFull', json.get('albumCoverImageMedium'))
-            self.name = json['albumName']
-            self.artist = json['albumArtistName']
-            self.genre = json['primaryGenre']
+        self.json = data
+        if 'metadata' in data:
+            self.trackCount = data['numTracks']
+            self.json = data['metadata']
+            data = self.json
+            self.id = data['albumAsin']
+            self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
+            self.name = data['albumName']
+            self.artist = data['albumArtistName']
+            self.genre = data['primaryGenre']
             self.rating = None
             self.releaseDate = None
         else:
-            self.id = json['asin']
-            self.coverUrl = json['image']
-            self.name = json['title']
-            self.artist = json['artist']['name']
-            self.genre = json['productDetails'].get('primaryGenreName')
-            self.rating = json['reviews']['average']
-            self.trackCount = json['trackCount']
-            self.releaseDate = json['originalReleaseDate'] / 1000
+            self.id = data['asin']
+            self.coverUrl = data['image']
+            self.name = data['title']
+            self.artist = data['artist']['name']
+            self.genre = data['productDetails'].get('primaryGenreName')
+            self.rating = data['reviews']['average']
+            self.trackCount = data['trackCount']
+            self.releaseDate = data['originalReleaseDate'] / 1000
 
     @property
     def tracks(self):
@@ -516,7 +526,7 @@ class Album:
         """
         # If we've only got a summary, load the full data
         if 'tracks' not in self.json:
-            a = self._am.getAlbum(self.id)
+            a = self._am.get_album(self.id)
             self.__init__(self._am, a.json)
 
         return list(map(lambda t: Track(self._am, t), self.json['tracks']))
@@ -538,21 +548,21 @@ class Playlist:
         * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
-    def __init__(self, am, json):
+    def __init__(self, am, data):
         """
           Internal use only.
 
           :param am: AmazonMusic object, used to make API calls.
-          :param json: JSON data structure for the album, from Amazon Music.
+          :param data: JSON data structure for the album, from Amazon Music.
         """
         self._am = am
-        self.json = json
-        self.id = json['asin']
-        self.coverUrl = json['image']
-        self.name = json['title']
-        self.genre = json['primaryGenre']
-        self.rating = json['reviews']['average']
-        self.trackCount = json['trackCount']
+        self.json = data
+        self.id = data['asin']
+        self.coverUrl = data['image']
+        self.name = data['title']
+        self.genre = data['primaryGenre']
+        self.rating = data['reviews']['average']
+        self.trackCount = data['trackCount']
 
     @property
     def tracks(self):
@@ -614,7 +624,7 @@ class Track:
             raise
 
     @property
-    def streamUrl(self):
+    def stream_url(self):
         """
           Return the URL for an M3U playlist for the track, allowing it to be streamed.
           The playlist seems to consist of individual chunks of the song, in ~10s segments,
