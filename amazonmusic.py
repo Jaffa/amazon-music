@@ -416,24 +416,23 @@ class AmazonMusic:
 
 class Station:
     """
-      Represents a streamable, unending station. This should be created with
-      `AmazonMusic.createStation`.
+    Represents a streamable, unending station. This should be created with `AmazonMusic.createStation`.
 
-      Key properties are:
+    Key properties are:
 
-        * `id` - ID of the station (Amazon ASIN)
-        * `name` - Name of the station.
-        * `coverUrl` - URL containing cover art for the station.
-        * `tracks` - Iterable generator for the `Tracks` that make up this station.
+    * `id` - ID of the station (Amazon ASIN)
+    * `name` - Name of the station.
+    * `coverUrl` - URL containing cover art for the station.
+    * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
     def __init__(self, am, asin, data):
         """
-          Internal use only.
+        Internal use only.
 
-          :param am: AmazonMusic object, used to make API calls.
-          :param asin: Station ASIN.
-          :param data: JSON data structure for the station, from Amazon Music.
+        :param am: AmazonMusic object, used to make API calls.
+        :param asin: Station ASIN.
+        :param data: JSON data structure for the station, from Amazon Music.
         """
         self._am = am
         self.id = asin
@@ -473,20 +472,20 @@ class Station:
 
 class Album:
     """
-      Represents a streamable, playable album. This should be created with
-      `AmazonMusic.getAlbum`.
+    Represents a streamable, playable album. This should be created with
+    `AmazonMusic.getAlbum`.
 
-      Key properties are:
+    Key properties are:
 
-        * `id` - ID of the album (Amazon ASIN)
-        * `name` - Album name.
-        * `artist` - Album artist name.
-        * `coverUrl` - URL containing cover art for the album.
-        * `genre` - Genre of the album.
-        * `rating` - Average review score (out of 5).
-        * `trackCount` - Number of tracks.
-        * `releaseDate` - UNIX timestamp of the original release date.
-        * `tracks` - Iterable generator for the `Tracks` that make up this station.
+    * `id` - ID of the album (Amazon ASIN)
+    * `name` - Album name.
+    * `artist` - Album artist name.
+    * `coverUrl` - URL containing cover art for the album.
+    * `genre` - Genre of the album.
+    * `rating` - Average review score (out of 5).
+    * `trackCount` - Number of tracks.
+    * `releaseDate` - UNIX timestamp of the original release date.
+    * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
     def __init__(self, am, data):
@@ -522,7 +521,7 @@ class Album:
     @property
     def tracks(self):
         """
-          Provide the list for the `Tracks` that make up this album.
+        Provide the list for the `Tracks` that make up this album.
         """
         # If we've only got a summary, load the full data
         if 'tracks' not in self.json:
@@ -534,26 +533,25 @@ class Album:
 
 class Playlist:
     """
-      Represents a streamable, playable playlist. This should be created with
-      `AmazonMusic.getPlaylist`.
+    Represents a streamable, playable playlist. This should be created with `AmazonMusic.getPlaylist`.
 
-      Key properties are:
+    Key properties are:
 
-        * `id` - ID of the album (Amazon ASIN)
-        * `name` - Album name.
-        * `coverUrl` - URL containing cover art for the album.
-        * `genre` - Genre of the album.
-        * `rating` - Average review score (out of 5).
-        * `trackCount` - Number of tracks.
-        * `tracks` - Iterable generator for the `Tracks` that make up this station.
+    * `id` - ID of the album (Amazon ASIN)
+    * `name` - Album name.
+    * `coverUrl` - URL containing cover art for the album.
+    * `genre` - Genre of the album.
+    * `rating` - Average review score (out of 5).
+    * `trackCount` - Number of tracks.
+    * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
     def __init__(self, am, data):
         """
-          Internal use only.
+        Internal use only.
 
-          :param am: AmazonMusic object, used to make API calls.
-          :param data: JSON data structure for the album, from Amazon Music.
+        :param am: AmazonMusic object, used to make API calls.
+        :param data: JSON data structure for the album, from Amazon Music.
         """
         self._am = am
         self.json = data
@@ -567,33 +565,33 @@ class Playlist:
     @property
     def tracks(self):
         """
-          Provide the list for the `Tracks` that make up this album.
+        Provide the list for the `Tracks` that make up this album.
         """
         return list(map(lambda t: Track(self._am, t), self.json['tracks']))
 
 
 class Track:
     """
-      Represents an individual track on Amazon Music. This will be returned from
-      one of the other calls and cannot be created directly.
+    Represents an individual track on Amazon Music. This will be returned from
+    one of the other calls and cannot be created directly.
 
-      Key properties are:
+    Key properties are:
 
-        * `name` - Track name
-        * `artist` - Track artist
-        * `album` - Album containing the track
-        * `albumArtist` - Primary artist for the album
-        * `coverUrl` - URL containing cover art for the track/album.
-        * `streamUrl` - URL of M3U playlist allowing the track to be streamed.
+    * `name` - Track name
+    * `artist` - Track artist
+    * `album` - Album containing the track
+    * `albumArtist` - Primary artist for the album
+    * `coverUrl` - URL containing cover art for the track/album.
+    * `streamUrl` - URL of M3U playlist allowing the track to be streamed.
     """
 
     def __init__(self, am, data):
         """
-          Internal use only.
+        Internal use only.
 
-          :param am: AmazonMusic object, used to make API calls.
-          :param data: JSON data structure for the track, from Amazon Music.
-                       Supported data structures are from `mpqs` and `muse`.
+        :param am: AmazonMusic object, used to make API calls.
+        :param data: JSON data structure for the track, from Amazon Music.
+                     Supported data structures are from `mpqs` and `muse`.
         """
         try:
             self._am = am
@@ -626,9 +624,9 @@ class Track:
     @property
     def stream_url(self):
         """
-          Return the URL for an M3U playlist for the track, allowing it to be streamed.
-          The playlist seems to consist of individual chunks of the song, in ~10s segments,
-          so a player capable of playing playlists seamless is required, such as VLC.
+        Return the URL for an M3U playlist for the track, allowing it to be streamed.
+        The playlist seems to consist of individual chunks of the song, in ~10s segments,
+        so a player capable of playing playlists seamless is required, such as VLC.
         """
         if self._url is None:
             stream_json = self._am.call(
