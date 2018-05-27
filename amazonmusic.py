@@ -19,14 +19,13 @@ This module implements an API for interacting with Amazon Music.
 
 from bs4 import BeautifulSoup
 import json
-import urllib
 import os
 import requests
 import re
 import types
 
 try:
-  from http.cookiejar import LWPCookieJar, Cookie
+    from http.cookiejar import LWPCookieJar, Cookie
 except ImportError:
     from cookielib import LWPCookieJar, Cookie
 
@@ -42,6 +41,7 @@ REGION_MAP = {
   'EUAmazon': 'EU',
   'FEAmazon': 'FE'
 }
+
 
 class AmazonMusic:
   """
