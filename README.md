@@ -154,6 +154,6 @@ Attribution to Andrew Flegg is welcome, but not required.
 
 Contributors
 ------------
-* Andrew Flegg
+* [Andrew Flegg](https://github.com/jaffa)
 * [Daniel Däschle](https://github.com/danieldaeschle)
-* Declan McAleese
+* [Declan McAleese](https://github.com/djmcaleese)
