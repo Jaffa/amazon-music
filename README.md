@@ -151,3 +151,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Attribution to Andrew Flegg is welcome, but not required.
+
+Contributors
+------------
+* Andrew Flegg
+* [Daniel Däschle](https://github.com/danieldaeschle)
+* Declan McAleese
