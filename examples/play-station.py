@@ -34,5 +34,5 @@ print('Art: %s\nPlaying station %s...' % (station.coverUrl, station.name))
 
 for t in station.tracks:
   print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
-  os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+  os.system("cvlc --play-and-exit '%s'" % t.stream_url)
   print('-------------------------')
