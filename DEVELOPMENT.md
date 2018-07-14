@@ -51,7 +51,7 @@ TermQuery | fieldName, term | The given field has the exact value
 
 Unfortunately, although `trackCount` is a parameter on the `Album` object, I can't make the following filter for albums work; nor can I get it returned from  the Tenzing service as a result field:
 
-```javascript
+```JSON
 "__type": "com.amazon.music.search.model#RangeQuery",
 "fieldName": "trackCount",
 "gte": "4"
@@ -88,7 +88,7 @@ In `appConfig` there are a number of possibly interesting values:
 
 When searching the catalogue, one of the constraints is `primeStatus = PRIME`:
 
-```javascript
+```JSON
   "query": {
     "__type": "com.amazon.music.search.model#BooleanQuery",
     "must": [
@@ -109,14 +109,14 @@ Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the
 
 ### Library
 
-In `listAlbums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).
+In `albums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).
 
 TODO
 ----
 
 - [x] Support other regions/territories [needs testing]
 - [ ] Return better results from search API
-- [x] Handle paging in `listAlbums`
+- [x] Handle paging in `albums`
 - [ ] Library access - saved playlists
 - [ ] Browse recommendations
 - [ ] Browse stations

@@ -29,10 +29,10 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 # -- Play a station...
 #
 asin = sys.argv[1] if len(sys.argv) == 2 else 'B075QGZDZ3'
-playlist = am.getPlaylist(asin)
+playlist = am.get_playlists(asin)
 print('Art: %s\nPlaying playlist %s (%d/5)...' % (playlist.coverUrl, playlist.name, playlist.rating))
 
 for t in playlist.tracks:
   print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
-  os.system("cvlc --play-and-exit '%s'" % (t.streamUrl))
+  os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
   print('-------------------------')

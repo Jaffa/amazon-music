@@ -13,14 +13,14 @@ Example usage
 from amazonmusic import AmazonMusic
 import os
 
-am = AmazonMusic(credentials = ['foo@example.com', 'xyzzy'])
+am = AmazonMusic(credentials=['foo@example.com', 'xyzzy'])
 
-station = am.createStation('A2UW0MECRAWILL')
-print('Playing station %s...' % (station.name))
+station = am.create_station('A2UW0MECRAWILL')
+print('Playing station {0}...'.format(station.name))
 
 for t in station.tracks:
-  print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
-  os.system("cvlc --play-and-exit '%s'" % (t.getUrl()))
+  print('Playing {0} by {1} from {2} [{3}]...'.format(t.name, t.artist, t.album, t.albumArtist))
+  os.system('cvlc --play-and-exit "{0}"'.format(t.getUrl()))
 ```
 
 _Note:_ hardcoding your Amazon credentials is a bad idea! `AmazonMusic` can be passed a lambda function that returns a two-element list. This will be called if a sign-in is necessary and can be used to prompt the user for their credentials. For example:
@@ -104,7 +104,7 @@ Default ASINs for albums, stations and playlists are defaulted within the exampl
 PYTHONPATH=. python examples/search.py Adele 25
 ```
 
-```javascript
+```JSON
 [...]
       {
         "document": {
@@ -133,7 +133,6 @@ PYTHONPATH=. python examples/play-album.py B0170UQ0OC
 
 Background
 ----------
-
 I have a long term plan to build an integrated smart home with voice assistant (possibly using the likes of [spaCy](https://spacy.io/), [Snowboy](https://snowboy.kitt.ai/), [openHAB](https://www.openhab.org/), [Mopidy](https://www.mopidy.com/) and [respeaker-avs](https://github.com/respeaker/avs)). As an Amazon Prime subscriber, I get access to Prime Music - which just about covers my streaming audio needs. Unfortunately, Alexa Voice Service [only allows people actively working with Amazon on commercial products](https://github.com/alexa-pi/AlexaPi/wiki/Q&A-(FAQ)#does-alexapi-support-amazon-music) under NDA to access Amazon Music.
 
 Switching to Spotify will cost money. Commercialising the integrating smart home solution might be an even longer term plan, but I don't want to predicate access on that. Reverse engineering Amazon Music - or getting Amazon to provide an API - so that it can be added to projects like Mopidy seems like the best way forward.
@@ -152,3 +151,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Attribution to Andrew Flegg is welcome, but not required.
+
+Contributors
+------------
+* [Andrew Flegg](https://github.com/jaffa)
+* [Daniel Däschle](https://github.com/danieldaeschle)
+* [Declan McAleese](https://github.com/djmcaleese)
