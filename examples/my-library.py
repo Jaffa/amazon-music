@@ -27,5 +27,5 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 
 # -- Display the user's library...
 #
-for a in am.albums():
+for a in am.albums:
   print('[%s] "%s" by %s: %d tracks' % (a.id, a.name, a.artist, a.trackCount))
