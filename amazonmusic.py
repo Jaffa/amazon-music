@@ -176,7 +176,7 @@ class AmazonMusic:
             query_headers['Content-Encoding'] = 'amz-1.0'
             query_data = json.dumps(query)
 
-        r = self.session.post('/{}/api/{}'.format(self.url, self.region, endpoint), headers=query_headers,
+        r = self.session.post('{}/{}/api/{}'.format(self.url, self.region, endpoint), headers=query_headers,
                               data=query_data)
         self.session.cookies.save()
         return r.json()
