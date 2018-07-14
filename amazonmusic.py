@@ -65,7 +65,10 @@ class AmazonMusic:
         :param cookies: (optional) File path to be used for the cookie jar.
         """
 
-        cookie_path = cookies or '{}/.amazonmusic-cookies.dat'.format(os.environ['HOME'])
+        local_dir = os.path.dirname(os.path.realpath(__file__))
+        cookie_path = cookies or '{}/.amazonmusic-cookies.dat'.format(os.environ.get('HOME',
+                                                                      os.environ.get('LOCALAPPDATA',
+                                                                      local_dir)))
         self.session = requests.Session()
         self.session.cookies = LWPCookieJar(cookie_path)
         if os.path.isfile(cookie_path):
