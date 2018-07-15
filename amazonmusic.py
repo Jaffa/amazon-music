@@ -32,6 +32,7 @@ except ImportError:
 
 AMAZON_MUSIC = 'https://music.amazon.com'
 AMAZON_SIGNIN = '/ap/signin'
+AMAZON_MFA = '/ap/mfa'  # Multi-Factor Authorization
 AMAZON_FORCE_SIGNIN = '/gp/dmusic/cloudplayer/forceSignIn'
 COOKIE_TARGET = '_AmazonMusic-targetUrl'  # Placeholder cookie to store target server in
 USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
@@ -151,8 +152,25 @@ class AmazonMusic:
             'Upgrade-Insecure-Requests': '1',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en-GB;q=0.7,chrome://global/locale/intl.properties;q=0.3'
-        },
-                              data=query)
+        }, data=query)
+
+        if r.history and r.history[-1].is_redirect and AMAZON_MFA in r.history[-1].headers['Location']:
+            soup = BeautifulSoup(r.content, "html.parser")
+            query = {"otpCode": input("2FA Code:")}
+
+            for field in soup.form.find_all("input"):
+                if field.get("type") == "hidden":
+                    query[field.get("name")] = field.get("value")
+                    
+            r = self.session.post(soup.form.get("action"), data=query,
+                                  headers={
+                                      'User-Agent': USER_AGENT,
+                                      'Referer': r.history[0].headers['Location'],
+                                      'Upgrade-Insecure-Requests': '1',
+                                      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                      'Accept-Language': 'en-US,en-GB;q=0.7,chrome://global/locale/intl.properties;q=0.3'
+            })
+
         self.session.cookies.save()
         return r
 
