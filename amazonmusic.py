@@ -25,10 +25,10 @@ import re
 import types
 
 try:
-    from http.cookiejar import LWPCookieJar, Cookie
+    from http.cookiejar import MozillaCookieJar, LWPCookieJar, Cookie
 except ImportError:
     # noinspection PyUnresolvedReferences
-    from cookielib import LWPCookieJar, Cookie
+    from cookielib import MozillaCookieJar, LWPCookieJar, Cookie
 
 AMAZON_MUSIC = 'https://music.amazon.com'
 AMAZON_SIGNIN = '/ap/signin'
@@ -66,13 +66,21 @@ class AmazonMusic:
         """
 
         local_dir = os.path.dirname(os.path.realpath(__file__))
-        cookie_path = cookies or '{}/.amazonmusic-cookies.dat'.format(os.environ.get('HOME',
-                                                                      os.environ.get('LOCALAPPDATA',
-                                                                      local_dir)))
+        def _cookie_path(extension):
+           return cookies or '{}/.amazonmusic-cookies.{}'.format(os.environ.get('HOME',
+                                                                   os.environ.get('LOCALAPPDATA',
+                                                                   local_dir)),
+                                                                 extension)
+        cookie_path = _cookie_path('dat')
         self.session = requests.Session()
-        self.session.cookies = LWPCookieJar(cookie_path)
         if os.path.isfile(cookie_path):
+            self.session.cookies = LWPCookieJar(cookie_path)
             self.session.cookies.load()
+        else:
+            cookie_path = _cookie_path('moz.dat')
+            self.session.cookies = MozillaCookieJar(cookie_path)
+            if os.path.isfile(cookie_path):
+                self.session.cookies.load()
 
         target_cookie = next((c for c in self.session.cookies if c.name == COOKIE_TARGET), None)
         if target_cookie is None:
@@ -83,7 +91,7 @@ class AmazonMusic:
         # -- Fetch the homepage, authenticating if necessary...
         #
         self.__c = credentials
-        r = self.session.get(target_cookie.value, headers={'User-Agent': USER_AGENT})
+        r = self.session.get(target_cookie.value, headers=self._http_headers(None))
         self.session.cookies.save()
         os.chmod(cookie_path, 0o600)
 
@@ -103,7 +111,7 @@ class AmazonMusic:
                 raise Exception("Unable to find appConfig in {}".format(r.content))
 
             if app_config['isRecognizedCustomer'] == 0:
-                r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers={'User-Agent': USER_AGENT})
+                r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers=self._http_headers(r))
                 app_config = None
         self.__c = None
 
@@ -136,25 +144,46 @@ class AmazonMusic:
         if not isinstance(self.__c, list) or len(self.__c) != 2:
             raise Exception("Invalid self.__c: expected list of two elements, but got " + type(self.__c))
 
+        r = self._post(r, {"email": self.__c[0], "password": self.__c[1]})
         soup = BeautifulSoup(r.content, "html.parser")
-        query = {"email": self.__c[0], "password": self.__c[1]}
+        tag = soup.select('audio#audio-captcha source')
+        if tag is not None and len(tag) > 0:
+            raise Exception("Unable to handle captcha: {}".format(tag))
 
+        self.session.cookies.save()
+        return r
+
+    def _post(self, r, data):
+        """
+        Assuming an HTML form, copy over any hidden fields and submit it with the extra data.
+
+        :param r: The response object pointing to the Amazon signin page.
+        """
+        soup = BeautifulSoup(r.content, "html.parser")
+        query = {}
         for field in soup.form.find_all("input"):
             if field.get("type") == "hidden":
                 query[field.get("name")] = field.get("value")
-            # else:
-            # print("skipping %s of type %s with value %s" % (field.get("name"), field.get("type"), field.get("value")))
 
-        r = self.session.post(soup.form.get("action"), headers={
+        query.update(data)
+        r = self.session.post(soup.form.get("action"),
+                              headers = self._http_headers(r),
+                              data = query)
+        return r
+
+    def _http_headers(self, r):
+        """
+        Given a given response, return the set of HTTP headers to use for the next request.
+
+        :param r: The current page.
+        """
+        return {
             'User-Agent': USER_AGENT,
-            'Referer': r.history[0].headers['Location'],
+            'Referer': r.history[0].headers['Location'] if r and len(r.history) > 0 else '',
             'Upgrade-Insecure-Requests': '1',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en-GB;q=0.7,chrome://global/locale/intl.properties;q=0.3'
-        },
-                              data=query)
-        self.session.cookies.save()
-        return r
+        }
 
     def call(self, endpoint, target, query):
         """
@@ -212,7 +241,7 @@ class AmazonMusic:
         """
         Get an album that can be played.
 
-        param albumId: Album ID, for example `B00J9AEZ7G`.
+        :param albumId: Album ID, for example `B00J9AEZ7G`.
         """
         return Album(
             self,
