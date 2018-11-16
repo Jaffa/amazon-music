@@ -27,5 +27,40 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 
 # -- Display the user's library...
 #
+
+count= 0
+print( '--- ALBUMS ---' )  
 for a in am.albums:
   print('[%s] "%s" by %s: %d tracks' % (a.id, a.name, a.artist, a.trackCount))
+  count+= 1
+print( '--- Total %d ---' % count )  
+
+count= 0
+print( '--- ARTISTS ---' )  
+for a in am.artists:
+  count+= 1
+  print('[%s] "%s": %d tracks' % (a.id, a.name, a.trackCount))
+print( '--- Total %d ---' % count )  
+
+count= 0
+print( '--- OWN PLAYLISTS ---' )  
+for a in am.own_playlists:
+  count+= 1
+  print('[%s] "%s": %d tracks' % (a.id, a.name, a.trackCount))
+print( '--- Total %d ---' % count )  
+
+count= 0
+print( '--- FOLLOWED PLAYLISTS ---' )  
+for p in am.followed_playlists:
+  count+= 1
+  print('[%s] "%s": %d tracks' % (p.id, p.name, p.trackCount))
+    
+print( '--- Total %d ---' % count )  
+
+count= 0
+print( '--- TRACKS ---' )  
+for p in am.tracks:
+  count+= 1
+  print('[%s] "%s" by %s' % (p.id, p.name, p.artist))
+    
+print( '--- Total %d ---' % count )  
