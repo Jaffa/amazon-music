@@ -254,7 +254,7 @@ class AmazonMusic:
         )
 
     @property
-    def albums(self):
+    def my_albums(self):
         """
         Return albums that are in the library. Amazon considers all albums,
         however this filters the list to albums with only four or more items.
@@ -307,7 +307,7 @@ class AmazonMusic:
                 results.extend(data['searchReturnItemList'])
 
     @property
-    def artists(self):
+    def my_artists(self):
         """
         Return artists that are in the library. 
         """
@@ -360,7 +360,50 @@ class AmazonMusic:
                 results.extend(data['searchReturnItemList'])
     
     @property
-    def own_playlists(self):
+    def my_genres(self):
+        """
+        Return artists that are in the library. 
+        """
+        query = {
+            'Operation': 'searchLibrary',
+            'ContentType': 'JSON',
+            'searchReturnType': 'GENRES',
+            'searchCriteria.member.1.attributeName': 'status',
+            'searchCriteria.member.1.comparisonType': 'EQUALS',
+            'searchCriteria.member.1.attributeValue': 'AVAILABLE',
+            'searchCriteria.member.2.attributeName': 'trackStatus',
+            'searchCriteria.member.2.comparisonType': 'IS_NULL',
+            'searchCriteria.member.2.attributeValue': None,
+            'albumArtUrlsSizeList.member.1': 'MEDIUM',
+            'selectedColumns.member.1': 'objectId',
+            'selectedColumns.member.2': 'primaryGenre',
+            'albumArtUrlsSizeList.member.1': 'FULL',
+            'sortCriteriaList': None,
+            'maxResults': 100,
+            'caller': 'getAllDataByMetaType',
+            'sortCriteriaList.member.1.sortColumn': 'primaryGenre',
+            'sortCriteriaList.member.1.sortType': 'ASC',
+            'customerInfo.customerId': self.customerId,
+            'customerInfo.deviceId': self.deviceId,
+            'customerInfo.deviceType': self.deviceType,
+        }
+
+        data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
+        results = []
+        results.extend(data['searchReturnItemList'])
+        while results:
+            r = results.pop(0)
+            
+            # if r['metadata'].get('primeStatus') == 'PRIME':  # DB: Amazon music ignores this status and shows all artists. 
+            yield Genre(self, r)
+
+            if not results and data['nextResultsToken']:
+                query['nextResultsToken'] = data['nextResultsToken']
+                data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
+                results.extend(data['searchReturnItemList'])
+    
+    @property
+    def my_own_playlists(self):
         """
         Return own (user's only) playlists that are in the library. 
         """
@@ -381,7 +424,7 @@ class AmazonMusic:
             yield OwnPlaylist(self, r)
 
     @property
-    def followed_playlists(self):
+    def my_followed_playlists(self):
         """
         Return own (user's only) playlists that are in the library. 
         """
@@ -403,9 +446,9 @@ class AmazonMusic:
             yield FollowedPlaylist(self, r)
 
     @property
-    def tracks(self):
+    def my_songs(self):
         """
-        Return tracks been stored in My Music
+        Return tracks/songs been stored in My Music
         """
         query = {
             'Operation': 'searchLibrary',
@@ -583,8 +626,61 @@ class AmazonMusic:
             lambda r: [r['label'], r],
             self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_obj)['results']
         ))
-
-
+    
+    def recommended(self):
+        """
+        Return all recommended categories for logged user(playlists,albums,songs,stations)
+        """
+        query = {
+            'customerId': self.customerId,
+            'deviceId': self.deviceId,
+            'deviceType': self.deviceType,
+            'lang': self.locale,
+            'maxResultsPerWidget': 24,
+            'minResultsPerWidget': 5,
+            'musicTerritory': self.territory,
+            'requestedContent': 'PRIME',
+        }
+        data = self.call('muse/legacy/getBrowseRecommendations/', 'com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations', query)
+        results = []
+        results.extend(data['recommendations'])
+        while results:
+            r = results.pop(0)
+            if r[ 'recommendationType' ]== 'PLAYLIST':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ FollowedPlaylist(self, playlist) for playlist in r[ 'playlists' ] ] }
+            if r[ 'recommendationType' ]== 'ALBUM':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Album(self, album) for album in r[ 'albums' ] ] }
+            if r[ 'recommendationType' ]== 'TRACK':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Track(self, track) for track in r[ 'tracks' ] ] }
+            if r[ 'recommendationType' ]== 'STATION':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station['stationKey'], station) for station in r[ 'stations' ] ] }
+        
+    def stations(self):
+        """
+        Return all recommended stations
+        """
+        query = {
+            'customerId': self.customerId,
+            'deviceId': self.deviceId,
+            'deviceType': self.deviceType,
+            'lang': self.locale,
+            'musicTerritory': self.territory,
+            'requestedContent': 'PRIME',
+        }
+        data = self.call('muse/stations/getStationSections', 'com.amazon.musicensembleservice.MusicEnsembleService.getStationSections', query)
+        results = []
+        results.extend(data['recommendations'])
+        while results:
+            r = results.pop(0)
+            if r[ 'recommendationType' ]== 'PLAYLIST':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ FollowedPlaylist(self, playlist) for playlist in r[ 'playlists' ] ] }
+            if r[ 'recommendationType' ]== 'ALBUM':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Album(self, album) for album in r[ 'albums' ] ] }
+            if r[ 'recommendationType' ]== 'TRACK':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Track(self, track) for track in r[ 'tracks' ] ] }
+            if r[ 'recommendationType' ]== 'STATION':
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station['stationKey'], station) for station in r[ 'stations' ] ] }
+              
 class Station:
     """
     Represents a streamable, unending station. This should be created with `AmazonMusic.createStation`.
@@ -608,9 +704,9 @@ class Station:
         self._am = am
         self.id = asin
         self.json = data
-        self.coverUrl = data['queue']['queueMetadata']['imageUrlMap']['FULL']
-        self.name = data['queue']['queueMetadata']['title']
-        self._pageToken = data['queue']['pageToken']
+        self.coverUrl = ( 'queue' in data and data['queue']['queueMetadata']['imageUrlMap']['FULL'] ) or data[ 'stationImageUrl' ]
+        self.name = ( 'queue' in data and data['queue']['queueMetadata']['title'] ) or data[ 'stationTitle' ]
+        self._pageToken = ('queue' in data and data['queue']['pageToken']) or data[ 'seed' ][ 'seedId' ]
 
     @property
     def tracks(self):
@@ -681,13 +777,13 @@ class Album:
             self.releaseDate = None
         else:
             self.id = data['asin']
-            self.coverUrl = data['image']
-            self.name = data['title']
-            self.artist = data['artist']['name']
-            self.genre = data['productDetails'].get('primaryGenreName')
-            self.rating = data['reviews']['average']
-            self.trackCount = data['trackCount']
-            self.releaseDate = data['originalReleaseDate'] / 1000
+            self.coverUrl = data.get( 'image', data[ 'albumArtImageUrl' ] )
+            self.name = data.get('title', data[ 'albumName' ] )
+            self.artist = ( 'artist' in data and data['artist']['name'] ) or data[ 'artistName' ]
+            self.genre = ( 'productDetails' in data and data['productDetails'].get('primaryGenreName') ) or ''
+            self.rating = ( 'reviews' in data and data['reviews']['average'] ) or -1
+            self.trackCount = data.get( 'trackCount', data[ 'totalNumberOfTracks' ] )
+            self.releaseDate = data.get( 'originalReleaseDate', data[ 'originalReleaseDate' ]) / 1000
 
     @property
     def tracks(self):
@@ -852,12 +948,49 @@ class FollowedPlaylist:
         self._am = am
         self.json = data
         self.id = data['asin']
-        self.coverUrl = ( 'bannerImage' in data and data[ 'bannerImage' ]['url'] ) or data['fourSquareImage']['url']
+        self.coverUrl = ( 'bannerImage' in data and data[ 'bannerImage' ]['url'] ) or ('fourSquareImage' in data and data['fourSquareImage']['url']) or data[ 'albumArtImageUrl' ]
         self.name = data['title']
         self.description = data['description']
-        self.trackCount = data['totalTrackCount']
-        self.created= data[ 'createdDate' ]
-        self.durationSecs= data[ 'durationSeconds' ]
+        self.trackCount = data.get('totalTrackCount' ) or data[ 'trackCount' ]
+        self.created= data.get( 'createdDate', '0' )
+        self.durationSecs= data.get( 'durationSeconds' ) or data[ 'duration' ]
+
+class Genre:
+    """
+    Represents a genre for MyMusic
+    Key properties are:
+
+    * `id` - ID of the artist (Amazon ASIN)
+    * `name` - Artist name.
+    * `coverUrl` - URL containing cover art for the artist.
+    * `genre` - Genre of the album.
+    * `rating` - Average review score (out of 5).
+    * `trackCount` - Number of tracks.
+    * `releaseDate` - UNIX timestamp of the original release date.
+    * `tracks` - Iterable generator for the `Tracks` that make up this station.
+    """
+
+    def __init__(self, am, data):
+        """
+        Internal use only.
+
+        :param am: AmazonMusic object, used to make API calls.
+        :param data: JSON data structure for the artist, from Amazon Music. Supports `cirrus` formats for now
+        """
+        self._am = am
+        self.json = data
+        if 'metadata' in data:
+            self.trackCount = data['numTracks']
+            self.json = data['metadata']
+            data = self.json
+            self.id = data['objectId']
+            self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
+            self.name = data['primaryGenre']
+        else:
+            self.id = 'MUSE NOT SUPPORTED'
+            self.coverUrl = 'MUSE NOT SUPPORTED'
+            self.name = 'MUSE NOT SUPPORTED'
+            self.trackCount = 'MUSE NOT SUPPORTED'
 
 
 class Track:
@@ -883,36 +1016,32 @@ class Track:
         :param data: JSON data structure for the track, from Amazon Music.
                      Supported data structures are from `mpqs` and `muse`.
         """
-        try:
-            self._am = am
-            self._url = None
+        self._am = am
+        self._url = None
 
-            self.json = data
-            self.id = data[ 'objectId' ]
-            self.name = data.get('name') or data['title']
-            self.artist = data.get('artistName') or data['artist']['name']
-            self.album = data.get('albumName') or data['album'].get('name') or data['album'].get('title')
-            self.albumArtist = data.get('albumArtistName') or data['album'].get('artistName') or data['album'].get('albumArtistName', self.artist)
+        self.json = data
+        self.id = data.get( 'objectId', data[ 'asin' ] )
+        self.name = data.get('name') or data['title']
+        self.artist = data.get('artistName') or data['artist']['name']
+        self.album = data.get('albumName') or data['album'].get('name') or data['album'].get('title')
+        self.albumArtist = data.get('albumArtistName') or data[ 'artistName' ] or data['album'].get('artistName') or data['album'].get('albumArtistName', self.artist)
+        self.coverUrl = None
+        self.purchased= ( 'orderId' in data and True ) or False
+        if 'artUrlMap' in data:
+            self.coverUrl = data['artUrlMap'].get('FULL', data['artUrlMap'].get('LARGE'))
+        elif 'album' in data and 'image' in data['album']:
+            self.coverUrl = data['album']['image']
+        elif 'albumCoverImageFull' in data:
+            self.coverUrl = data['albumCoverImageFull']
 
-            self.coverUrl = None
-            if 'artUrlMap' in data:
-                self.coverUrl = data['artUrlMap'].get('FULL', data['artUrlMap'].get('LARGE'))
-            elif 'album' in data and 'image' in data['album']:
-                self.coverUrl = data['album']['image']
-            elif 'albumCoverImageFull' in data:
-                self.coverUrl = data['albumCoverImageFull']
+        if 'identifierType' in data:
+            self.identifierType = data['identifierType']
+            self.identifier = data['identifier']
+        else:
+            self.identifierType = 'ASIN'
+            self.identifier = data['asin']
 
-            if 'identifierType' in data:
-                self.identifierType = data['identifierType']
-                self.identifier = data['identifier']
-            else:
-                self.identifierType = 'ASIN'
-                self.identifier = data['asin']
-
-            self.duration = data.get('durationInSeconds', data.get('duration'))
-        except KeyError as e:
-            e.args = ('{} not found in {}'.format(e.args[0], json.dumps(data, sort_keys=True)),)
-            raise
+        self.duration = data.get('durationInSeconds' ) or data.get('duration' ) or data[ 'durationSeconds' ]
 
     @property
     def stream_url(self):
