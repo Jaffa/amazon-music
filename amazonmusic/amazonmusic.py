@@ -500,6 +500,59 @@ class AmazonMusic:
             r = results.pop(0)
             yield Track(self, r[ 'metadata' ])
             
+    def _get_playlists_by_parent(self, parent, rank_type ):
+        """
+        Return playlists based on parent category and rank_type
+        """
+        query = {
+            'musicTerritory':   'US',
+            'customerId':       self.customerId,
+            'deviceId':         self.deviceId,
+            'deviceType':       self.deviceType,
+            'lang':             self.locale,
+            'requestedContent': 'PRIME',
+            'maxCount':         24, 
+            'rankType':         rank_type,
+            'types':            ["playlist"],
+            'features':         ["playlistLibraryAvailability", "ownership"],
+            'browseId':         parent,
+            'nextTokenMap':     {'playlist': ''},
+        }
+
+        data = self.call('muse/getTopMusicEntities', 'com.amazon.musicensembleservice.MusicEnsembleService.getTopMusicEntities', query)
+        results = []
+        results.extend(data['playlistList'])
+        while results:
+            r = results.pop(0)
+            yield Playlist(self, r)
+
+    def get_category_playlists(self, category, parent= None ):
+        """
+        Return playlists based on category and allow dig deeper when parent ID is known
+        """
+        query = {
+            'musicTerritory': 'US',
+            'customerId': self.customerId,
+            'deviceId': self.deviceId,
+            'deviceType': self.deviceType,
+            'lang': self.locale,
+            'requestedContent': 'PRIME',
+        }
+
+        data = self.call('muse/browseHierarchyV2', 'com.amazon.musicensembleservice.MusicEnsembleService.browseHierarchyV2', query)
+        results = []
+        results.extend(data['browseHierarchy'])
+        while results:
+            r = results.pop(0)
+            if r[ 'type' ]== category:
+              # Check if we have nesting
+              if parent:
+                # Find our parent and browse into it
+                return self._get_playlists_by_parent( parent, 'popularity-rank' )
+              else:
+                for b in r[ 'browseObjects' ]:
+                  yield BrowseObject(self, b)
+    
     def get_playlists(self, album_id):
         """
         Get a playlist that can be played.
@@ -653,9 +706,9 @@ class AmazonMusic:
             if r[ 'recommendationType' ]== 'TRACK':
               yield { 'type': r[ 'recommendationType' ], 'items': [ Track(self, track) for track in r[ 'tracks' ] ] }
             if r[ 'recommendationType' ]== 'STATION':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station['stationKey'], station) for station in r[ 'stations' ] ] }
+              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station) for station in r[ 'stations' ] ] }
         
-    def stations(self):
+    def get_stations(self, parent= None):
         """
         Return all recommended stations
         """
@@ -668,18 +721,19 @@ class AmazonMusic:
             'requestedContent': 'PRIME',
         }
         data = self.call('muse/stations/getStationSections', 'com.amazon.musicensembleservice.MusicEnsembleService.getStationSections', query)
-        results = []
-        results.extend(data['recommendations'])
-        while results:
-            r = results.pop(0)
-            if r[ 'recommendationType' ]== 'PLAYLIST':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ FollowedPlaylist(self, playlist) for playlist in r[ 'playlists' ] ] }
-            if r[ 'recommendationType' ]== 'ALBUM':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Album(self, album) for album in r[ 'albums' ] ] }
-            if r[ 'recommendationType' ]== 'TRACK':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Track(self, track) for track in r[ 'tracks' ] ] }
-            if r[ 'recommendationType' ]== 'STATION':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station['stationKey'], station) for station in r[ 'stations' ] ] }
+        categories= data[ 'categories' ]
+        if parent:
+          # Retrieve all stations
+          stations= data[ 'stations' ]
+        
+        for category in categories:
+            c = categories[ category ]
+            if parent:
+              if c[ 'categoryId' ]== parent:
+                for station in c[ 'stationMapIds' ]:
+                  yield Station( self, stations[ station ] )
+            else:
+              yield BrowseObject( self, c )
               
 class Station:
     """
@@ -693,7 +747,7 @@ class Station:
     * `tracks` - Iterable generator for the `Tracks` that make up this station.
     """
 
-    def __init__(self, am, asin, data):
+    def __init__(self, am, data):
         """
         Internal use only.
 
@@ -702,12 +756,12 @@ class Station:
         :param data: JSON data structure for the station, from Amazon Music.
         """
         self._am = am
-        self.id = asin
+        self.id = data[ 'stationKey' ]
         self.json = data
         self.coverUrl = ( 'queue' in data and data['queue']['queueMetadata']['imageUrlMap']['FULL'] ) or data[ 'stationImageUrl' ]
         self.name = ( 'queue' in data and data['queue']['queueMetadata']['title'] ) or data[ 'stationTitle' ]
-        self._pageToken = ('queue' in data and data['queue']['pageToken']) or data[ 'seed' ][ 'seedId' ]
-
+        self._pageToken = ('queue' in data and data['queue']['pageToken']) or ('seed' in data and data[ 'seed' ][ 'seedId' ])
+        
     @property
     def tracks(self):
         """
@@ -1082,3 +1136,16 @@ class Track:
                 e.args = ('{} not found in {}'.format(e.args[0], json.dumps(stream_json, sort_keys=True)),)
                 raise
         return self._url
+        
+class BrowseObject:
+    """
+    Represents an individual browsable object in category hierarchy
+
+    Key properties are:
+
+    * `id` - Object ID
+    * `name` - Object  name
+    """
+    def __init__(self, am, data):
+        self.id = data.get( 'browseId' ) or data[ 'categoryId' ]
+        self.name = data.get( 'browseName' ) or data[ 'title' ]
