@@ -4,10 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pylint = "*"
 
 [packages]
-bs4 = "*"
-requests = "*"
+e1839a8 = {path = ".",editable = true}
+amazonmusic = {path = ".",editable = true}
 
 [requires]
+python_version = "2.7"
