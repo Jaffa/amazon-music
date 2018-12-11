@@ -6,7 +6,6 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-e1839a8 = {path = ".",editable = true}
 amazonmusic = {path = ".",editable = true}
 
 [requires]
