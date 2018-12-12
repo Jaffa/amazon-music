@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from amazonmusic import AmazonMusic
+from amazonmusic.amazonmusic import AmazonMusic
 from getpass import getpass
 try: input = raw_input
 except NameError: pass

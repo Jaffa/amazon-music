@@ -22,7 +22,7 @@ setup(
     keywords='',
     classifiers=[
     ],
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['tests', 'examples']),
     include_package_data=True,
     url='https://www.github.com/Jaffa/amazon-music'
 )
