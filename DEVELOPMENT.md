@@ -129,6 +129,9 @@ When searching the catalogue, one of the constraints is `primeStatus = PRIME`:
 
 Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the alternative for Music Unlimited would be `isMusicSubscription == true`.
 
+It seems like, that collections with a `catalogue_` prefix as contain restults, which are available by Amazon Music.
+The collections with `library_` prefix therefor may contain stuff of your own library.
+
 ### Library
 
 In `albums`, we post-filter the results to only include items that are `PRIME`. Items that are streamable but not prime, seem to have the value `NOT_PRIME` in the same field (but this _might_ be cross-regional).

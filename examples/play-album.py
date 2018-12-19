@@ -28,11 +28,12 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 
 # -- Play an album...
 #
-asin = sys.argv[1] if len(sys.argv) == 2 else 'B00J9AEZ7G'
+asin = sys.argv[1] if len(sys.argv) == 2 else 'B009WVHNTE'
 album = am.get_album(asin)
 print('Art: %s\nPlaying album %s by %s (%d/5)...' % (album.coverUrl, album.name, album.artist, album.rating))
 
 for t in album.tracks:
   print("Playing %s..." % (t.name))
-  os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+  #os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+  print(t.stream_url)
   print('-------------------------')
