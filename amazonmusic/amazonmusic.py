@@ -253,6 +253,20 @@ class AmazonMusic:
             )['albumList'][0]
         )
 
+    def get_track(self, track_id):
+        """
+        Get a track by it's asin
+
+        :param track_id: acin of the track
+        :return: a Track object containing track information
+        """
+        # Using search as bridge (or hack)to get track information
+        search_result = self.search(track_id, library_only=False, tracks=True, albums=False, playlists=False, artists=False, stations=False)
+        # TODO error handling on not found
+        track_data = [record[1]['hits'][0] for record in search_result if record[0] == 'catalog_tracks' ][0]
+        return Track(self, track_data)
+
+
     @property
     def my_albums(self):
         """
