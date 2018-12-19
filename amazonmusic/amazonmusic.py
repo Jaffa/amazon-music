@@ -548,7 +548,7 @@ class AmazonMusic:
               # Check if we have nesting
               if parent:
                 # Find our parent and browse into it
-                return self._get_playlists_by_parent( parent, 'popularity-rank' )
+                yield self._get_playlists_by_parent( parent, 'popularity-rank' )
               else:
                 for b in r[ 'browseObjects' ]:
                   yield BrowseObject(self, b)
@@ -831,12 +831,12 @@ class Album:
             self.releaseDate = None
         else:
             self.id = data['asin']
-            self.coverUrl = data.get( 'image', data[ 'albumArtImageUrl' ] )
-            self.name = data.get('title', data[ 'albumName' ] )
+            self.coverUrl = data.get( 'image', data[ 'image' ] )
+            self.name = data.get('title', data[ 'title' ] )
             self.artist = ( 'artist' in data and data['artist']['name'] ) or data[ 'artistName' ]
             self.genre = ( 'productDetails' in data and data['productDetails'].get('primaryGenreName') ) or ''
             self.rating = ( 'reviews' in data and data['reviews']['average'] ) or -1
-            self.trackCount = data.get( 'trackCount', data[ 'totalNumberOfTracks' ] )
+            self.trackCount = data.get( 'trackCount', data[ 'trackCount' ] )
             self.releaseDate = data.get( 'originalReleaseDate', data[ 'originalReleaseDate' ]) / 1000
 
     @property
@@ -1078,7 +1078,7 @@ class Track:
         self.name = data.get('name') or data['title']
         self.artist = data.get('artistName') or data['artist']['name']
         self.album = data.get('albumName') or data['album'].get('name') or data['album'].get('title')
-        self.albumArtist = data.get('albumArtistName') or data[ 'artistName' ] or data['album'].get('artistName') or data['album'].get('albumArtistName', self.artist)
+        self.albumArtist = data['albumArtistName']
         self.coverUrl = None
         self.purchased= ( 'orderId' in data and True ) or False
         if 'artUrlMap' in data:
