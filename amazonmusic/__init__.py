@@ -19,3 +19,4 @@ REGION_MAP = {
     'EUAmazon': 'EU',
     'FEAmazon': 'FE'
 }
+

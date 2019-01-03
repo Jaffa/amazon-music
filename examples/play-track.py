@@ -30,7 +30,6 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 #
 asin = sys.argv[1] if len(sys.argv) == 2 else 'B005NK9IHS'
 track = am.get_track(asin)
-print(track)
 
 print("Playing %s..." % (track.name))
 #os.system("cvlc --play-and-exit '%s'" % (t.stream_url))

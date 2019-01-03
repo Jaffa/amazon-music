@@ -23,7 +23,15 @@ import os
 import requests
 import re
 import types
+# internal package imports
 from . import *
+from .track import Track
+from .album import Album
+from .artist import Artist
+from .playlist import *
+from .browse_object import BrowseObject
+from .genre import Genre
+from .station import Station
 
 try:
     from http.cookiejar import MozillaCookieJar, LWPCookieJar, Cookie
@@ -207,23 +215,22 @@ class AmazonMusic:
 
         :param station_id: Station ID, for example `A2UW0MECRAWILL`.
         """
-        return Station(
-            self, station_id,
-            self.call(
-                'mpqs/voiceenabled/createQueue',
-                'com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternal'
-                'VoiceEnabledClient.createQueue',
-                {
-                    'identifier': station_id, 'identifierType': 'STATION_KEY',
-                    'customerInfo': {
-                        'deviceId': self.deviceId,
-                        'deviceType': self.deviceType,
-                        'musicTerritory': self.territory,
-                        'customerId': self.customerId
-                    }
-                }
-            )
+        data = self.call('mpqs/voiceenabled/createQueue',
+                         'com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueServiceExternal'
+                         'VoiceEnabledClient.createQueue',
+                         {
+                             'identifier': station_id, 'identifierType': 'STATION_KEY',
+                             'customerInfo': {
+                                 'deviceId': self.deviceId,
+                                 'deviceType': self.deviceType,
+                                 'musicTerritory': self.territory,
+                                 'customerId': self.customerId
+                             }
+                         }
         )
+        # Augment station key to data, because it is not included in the results of this API call
+        data['stationKey'] = station_id
+        return Station(self, data)
 
     def get_album(self, album_id):
         """
@@ -260,10 +267,10 @@ class AmazonMusic:
         :param track_id: acin of the track
         :return: a Track object containing track information
         """
-        # Using search as bridge (or hack)to get track information
+        # Using search as bridge (or hack) to get track information
         search_result = self.search(track_id, library_only=False, tracks=True, albums=False, playlists=False, artists=False, stations=False)
         # TODO error handling on not found
-        track_data = [record[1]['hits'][0] for record in search_result if record[0] == 'catalog_tracks' ][0]
+        track_data = [record[1]['hits'][0]['document'] for record in search_result if record[0] == 'catalog_tracks' ][0]
         return Track(self, track_data)
 
 
@@ -545,7 +552,7 @@ class AmazonMusic:
         Return playlists based on category and allow dig deeper when parent ID is known
         """
         query = {
-            'musicTerritory': 'US',
+            'musicTerritory': self.territory,
             'customerId': self.customerId,
             'deviceId': self.deviceId,
             'deviceType': self.deviceType,
@@ -713,16 +720,16 @@ class AmazonMusic:
         results.extend(data['recommendations'])
         while results:
             r = results.pop(0)
-            if r[ 'recommendationType' ]== 'PLAYLIST':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ FollowedPlaylist(self, playlist) for playlist in r[ 'playlists' ] ] }
-            if r[ 'recommendationType' ]== 'ALBUM':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Album(self, album) for album in r[ 'albums' ] ] }
-            if r[ 'recommendationType' ]== 'TRACK':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Track(self, track) for track in r[ 'tracks' ] ] }
-            if r[ 'recommendationType' ]== 'STATION':
-              yield { 'type': r[ 'recommendationType' ], 'items': [ Station(self, station) for station in r[ 'stations' ] ] }
+            if r['recommendationType'] == 'PLAYLIST':
+                yield {'type': r['recommendationType'], 'items': [FollowedPlaylist(self, playlist) for playlist in r['playlists']]}
+            if r['recommendationType'] == 'ALBUM':
+                yield {'type': r['recommendationType'], 'items': [Album(self, album) for album in r['albums']]}
+            if r['recommendationType'] == 'TRACK':
+                yield {'type': r['recommendationType'], 'items': [Track(self, track) for track in r['tracks']]}
+            if r['recommendationType'] == 'STATION':
+                yield {'type': r['recommendationType'], 'items': [Station(self, station) for station in r['stations']]}
         
-    def get_stations(self, parent= None):
+    def get_stations(self, parent=None):
         """
         Return all recommended stations
         """
@@ -749,417 +756,3 @@ class AmazonMusic:
             else:
               yield BrowseObject( self, c )
               
-class Station:
-    """
-    Represents a streamable, unending station. This should be created with `AmazonMusic.createStation`.
-
-    Key properties are:
-
-    * `id` - ID of the station (Amazon ASIN)
-    * `name` - Name of the station.
-    * `coverUrl` - URL containing cover art for the station.
-    * `tracks` - Iterable generator for the `Tracks` that make up this station.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param asin: Station ASIN.
-        :param data: JSON data structure for the station, from Amazon Music.
-        """
-        self._am = am
-        self.id = data[ 'stationKey' ]
-        self.json = data
-        self.coverUrl = ( 'queue' in data and data['queue']['queueMetadata']['imageUrlMap']['FULL'] ) or data[ 'stationImageUrl' ]
-        self.name = ( 'queue' in data and data['queue']['queueMetadata']['title'] ) or data[ 'stationTitle' ]
-        self._pageToken = ('queue' in data and data['queue']['pageToken']) or ('seed' in data and data[ 'seed' ][ 'seedId' ])
-        
-    @property
-    def tracks(self):
-        """
-        Provides an iterable generator for the `Tracks` that make up this station.
-        """
-        tracks = []
-        tracks.extend(self.json['trackMetadataList'])
-        while tracks:
-            yield Track(self._am, tracks.pop(0))
-
-            if not tracks:
-                data = self._am.call(
-                    'mpqs/voiceenabled/getNextTracks',
-                    'com.amazon.musicplayqueueservice.model.client.external.voiceenabled.MusicPlayQueueService'
-                    'ExternalVoiceEnabledClient.getNextTracks',
-                    {
-                        'pageToken': self._pageToken,
-                        'numberOfTracks': 10,
-                        'customerInfo': {
-                            'deviceId': self._am.deviceId,
-                            'deviceType': self._am.deviceType,
-                            'musicTerritory': self._am.territory,
-                            'customerId': self._am.customerId
-                        }
-                    })
-                self._pageToken = data['nextPageToken']
-                tracks.extend(data['trackMetadataList'])
-
-
-class Album:
-    """
-    Represents a streamable, playable album. This should be created with
-    `AmazonMusic.getAlbum`.
-
-    Key properties are:
-
-    * `id` - ID of the album (Amazon ASIN)
-    * `name` - Album name.
-    * `artist` - Album artist name.
-    * `coverUrl` - URL containing cover art for the album.
-    * `genre` - Genre of the album.
-    * `rating` - Average review score (out of 5).
-    * `trackCount` - Number of tracks.
-    * `releaseDate` - UNIX timestamp of the original release date.
-    * `tracks` - Iterable generator for the `Tracks` that make up this station.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the album, from Amazon Music. Supports both `muse` and `cirrus` formats.
-        """
-        self._am = am
-        self.json = data
-        if 'metadata' in data:
-            self.trackCount = data['numTracks']
-            self.json = data['metadata']
-            data = self.json
-            self.id = data['albumAsin']
-            self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
-            self.name = data['albumName']
-            self.artist = data['albumArtistName']
-            self.genre = data['primaryGenre']
-            self.rating = None
-            self.releaseDate = None
-        else:
-            self.id = data['asin']
-            self.coverUrl = data.get( 'image', data[ 'image' ] )
-            self.name = data.get('title', data[ 'title' ] )
-            self.artist = ( 'artist' in data and data['artist']['name'] ) or data[ 'artistName' ]
-            self.genre = ( 'productDetails' in data and data['productDetails'].get('primaryGenreName') ) or ''
-            self.rating = ( 'reviews' in data and data['reviews']['average'] ) or -1
-            self.trackCount = data.get( 'trackCount', data[ 'trackCount' ] )
-            self.releaseDate = data.get( 'originalReleaseDate', data[ 'originalReleaseDate' ]) / 1000
-
-    @property
-    def tracks(self):
-        """
-        Provide the list for the `Tracks` that make up this album.
-        """
-        # If we've only got a summary, load the full data
-        if 'tracks' not in self.json:
-            a = self._am.get_album(self.id)
-            self.__init__(self._am, a.json)
-
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
-
-class Artist:
-    """
-    Represents a streamable, playable artist. This should be created with
-    `AmazonMusic.getArtist`.
-
-    Key properties are:
-
-    * `id` - ID of the artist (Amazon ASIN)
-    * `name` - Artist name.
-    * `coverUrl` - URL containing cover art for the artist.
-    * `genre` - Genre of the album.
-    * `rating` - Average review score (out of 5).
-    * `trackCount` - Number of tracks.
-    * `releaseDate` - UNIX timestamp of the original release date.
-    * `tracks` - Iterable generator for the `Tracks` that make up this station.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the artist, from Amazon Music. Supports `cirrus` formats for now
-        """
-        self._am = am
-        self.json = data
-        if 'metadata' in data:
-            self.trackCount = data['numTracks']
-            self.json = data['metadata']
-            data = self.json
-            self.id = data['albumArtistAsin']
-            self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
-            self.name = data['artistName']
-            self.genre = data['albumPrimaryGenre']
-            self.rating = None
-            self.releaseDate = None
-        else:
-            self.id = 'MUSE NOT SUPPORTED'
-            self.coverUrl = 'MUSE NOT SUPPORTED'
-            self.name = 'MUSE NOT SUPPORTED'
-            self.genre = 'MUSE NOT SUPPORTED'
-            self.rating = 'MUSE NOT SUPPORTED'
-            self.trackCount = 'MUSE NOT SUPPORTED'
-            self.releaseDate = 'MUSE NOT SUPPORTED'
-
-    @property
-    def tracks(self):
-        """
-        Provide the list for the `Tracks` that make up this album.
-        """
-        # If we've only got a summary, load the full data
-        if 'tracks' not in self.json:
-            a = self._am.get_album(self.id)
-            self.__init__(self._am, a.json)
-
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
-
-
-class Playlist:
-    """
-    Represents a streamable, playable playlist. This should be created with `AmazonMusic.getPlaylist`.
-
-    Key properties are:
-
-    * `id` - ID of the album (Amazon ASIN)
-    * `name` - Album name.
-    * `coverUrl` - URL containing cover art for the album.
-    * `genre` - Genre of the album.
-    * `rating` - Average review score (out of 5).
-    * `trackCount` - Number of tracks.
-    * `tracks` - Iterable generator for the `Tracks` that make up this station.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the album, from Amazon Music.
-        """
-        self._am = am
-        self.json = data
-        self.id = data['asin']
-        self.coverUrl = data['image']
-        self.name = data['title']
-        self.genre = data['primaryGenre']
-        self.rating = data['reviews']['average']
-        self.trackCount = data['trackCount']
-
-    @property
-    def tracks(self):
-        """
-        Provide the list for the `Tracks` that make up this album.
-        """
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
-
-class OwnPlaylist:
-    """
-    Represents an owned playlist. This can be created with `AmazonMusic.getPlaylist`.
-
-    Key properties are:
-
-    * `id` - ID of the playlist
-    * `name` - Playlist name.
-    * `coverUrl` - URL containing cover art for the album.
-    * `trackCount` - Number of tracks.
-    * `created` - Creation date
-    * `durationSecs` - Duration of the playlist in secs
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the album, from Amazon Music.
-        """
-        self._am = am
-        self.json = data
-        self.id = data['playlistId']
-        self.coverUrl = data['fourSquareImage']['url']
-        self.name = data['title']
-        self.trackCount = data['totalTrackCount']
-        self.created= data[ 'createdDate' ]
-        self.durationSecs= data[ 'durationSeconds' ]
-
-class FollowedPlaylist:
-    """
-    Represents followed playlist created by the third party.
-
-    Key properties are:
-
-    * `id` - ID of the playlist
-    * `name` - Playlist name.
-    * 'description' - description of the playlist
-    * `coverUrl` - URL containing cover art for the album.
-    * `trackCount` - Number of tracks.
-    * `created` - Creation date
-    * `durationSecs` - Duration of the playlist in secs
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the album, from Amazon Music.
-        """
-        self._am = am
-        self.json = data
-        self.id = data['asin']
-        self.coverUrl = ( 'bannerImage' in data and data[ 'bannerImage' ]['url'] ) or ('fourSquareImage' in data and data['fourSquareImage']['url']) or data[ 'albumArtImageUrl' ]
-        self.name = data['title']
-        self.description = data['description']
-        self.trackCount = data.get('totalTrackCount' ) or data[ 'trackCount' ]
-        self.created= data.get( 'createdDate', '0' )
-        self.durationSecs= data.get( 'durationSeconds' ) or data[ 'duration' ]
-
-class Genre:
-    """
-    Represents a genre for MyMusic
-    Key properties are:
-
-    * `id` - ID of the artist (Amazon ASIN)
-    * `name` - Artist name.
-    * `coverUrl` - URL containing cover art for the artist.
-    * `genre` - Genre of the album.
-    * `rating` - Average review score (out of 5).
-    * `trackCount` - Number of tracks.
-    * `releaseDate` - UNIX timestamp of the original release date.
-    * `tracks` - Iterable generator for the `Tracks` that make up this station.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the artist, from Amazon Music. Supports `cirrus` formats for now
-        """
-        self._am = am
-        self.json = data
-        if 'metadata' in data:
-            self.trackCount = data['numTracks']
-            self.json = data['metadata']
-            data = self.json
-            self.id = data['objectId']
-            self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
-            self.name = data['primaryGenre']
-        else:
-            self.id = 'MUSE NOT SUPPORTED'
-            self.coverUrl = 'MUSE NOT SUPPORTED'
-            self.name = 'MUSE NOT SUPPORTED'
-            self.trackCount = 'MUSE NOT SUPPORTED'
-
-
-class Track:
-    """
-    Represents an individual track on Amazon Music. This will be returned from
-    one of the other calls and cannot be created directly.
-
-    Key properties are:
-
-    * `name` - Track name
-    * `artist` - Track artist
-    * `album` - Album containing the track
-    * `albumArtist` - Primary artist for the album
-    * `coverUrl` - URL containing cover art for the track/album.
-    * `streamUrl` - URL of M3U playlist allowing the track to be streamed.
-    """
-
-    def __init__(self, am, data):
-        """
-        Internal use only.
-
-        :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the track, from Amazon Music.
-                     Supported data structures are from `mpqs` and `muse`.
-        """
-        self._am = am
-        self._url = None
-
-        self.json = data
-        self.id = data.get( 'objectId', data[ 'asin' ] )
-        self.name = data.get('name') or data['title']
-        self.artist = data.get('artistName') or data['artist']['name']
-        self.album = data.get('albumName') or data['album'].get('name') or data['album'].get('title')
-        self.albumArtist = data['albumArtistName']
-        self.coverUrl = None
-        self.purchased= ( 'orderId' in data and True ) or False
-        if 'artUrlMap' in data:
-            self.coverUrl = data['artUrlMap'].get('FULL', data['artUrlMap'].get('LARGE'))
-        elif 'album' in data and 'image' in data['album']:
-            self.coverUrl = data['album']['image']
-        elif 'albumCoverImageFull' in data:
-            self.coverUrl = data['albumCoverImageFull']
-
-        if 'identifierType' in data:
-            self.identifierType = data['identifierType']
-            self.identifier = data['identifier']
-        else:
-            self.identifierType = 'ASIN'
-            self.identifier = data['asin']
-
-        self.duration = data.get('durationInSeconds' ) or data.get('duration' ) or data[ 'durationSeconds' ]
-
-    @property
-    def stream_url(self):
-        """
-        Return the URL for an M3U playlist for the track, allowing it to be streamed.
-        The playlist seems to consist of individual chunks of the song, in ~10s segments,
-        so a player capable of playing playlists seamless is required, such as VLC.
-        """
-        if self._url is None:
-            stream_json = self._am.call(
-                'dmls/',
-                'com.amazon.digitalmusiclocator.DigitalMusicLocatorServiceExternal.getRestrictedStreamingURL',
-                {
-                    'customerId': self._am.customerId,
-                    'deviceToken': {
-                        'deviceTypeId': self._am.deviceType,
-                        'deviceId': self._am.deviceId,
-                    },
-                    'appMetadata': {
-                        'https': 'true'
-                    },
-                    'clientMetadata': {
-                        'clientId': 'WebCP',
-                    },
-                    'contentId': {
-                        'identifier': self.identifier,
-                        'identifierType': self.identifierType,
-                        'bitRate': 'HIGH',
-                        'contentDuration': self.duration
-                    }
-                })
-            if 'statusCode' in stream_json and stream_json['statusCode'] == 'MAX_CONCURRENCY_REACHED':
-                raise Exception(stream_json['statusCode'])
-
-            try:
-                self._url = stream_json['contentResponse']['urlList'][0]
-            except KeyError as e:
-                e.args = ('{} not found in {}'.format(e.args[0], json.dumps(stream_json, sort_keys=True)),)
-                raise
-        return self._url
-        
-class BrowseObject:
-    """
-    Represents an individual browsable object in category hierarchy
-
-    Key properties are:
-
-    * `id` - Object ID
-    * `name` - Object  name
-    """
-    def __init__(self, am, data):
-        self.id = data.get( 'browseId' ) or data[ 'categoryId' ]
-        self.name = data.get( 'browseName' ) or data[ 'title' ]
