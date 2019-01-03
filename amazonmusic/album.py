@@ -1,7 +1,6 @@
 """
 Album class
 """
-import json
 from .track import Track
 
 
@@ -28,14 +27,14 @@ class Album(object):
         Internal use only.
 
         :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the album, from Amazon Music. Supports both `muse` and `cirrus` formats.
+        :param data: JSON data structure for the album, from Amazon Music.
+            Supports both `muse` and `cirrus` formats.
         """
         self._am = am
         self.json = data
         if 'metadata' in data:
             self.trackCount = data['numTracks']
             self.json = data['metadata']
-            data = self.json
             self.id = data['albumAsin']
             self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
             self.name = data['albumName']
@@ -47,11 +46,11 @@ class Album(object):
             self.id = data['asin']
             self.coverUrl = data.get('image') or data['albumArtImageUrl']
             self.name = data.get('title') or data['albumName']
-            self.artist = ('artist' in data and data['artist']['name']) or data['artistName']
+            self.artist = data['artist']['name'] if 'artist' in data  else data['artistName']
             self.genre = 'productDetails' in data and data['productDetails'].get('primaryGenreName')
-            self.rating = ('reviews' in data and data['reviews']['average']) or -1
+            self.rating = data['reviews']['average'] if 'reviews' in data else -1
             self.trackCount = data.get('trackCount') or data['totalNumberOfTracks']
-            self.releaseDate = data[ 'originalReleaseDate' ] / 1000
+            self.releaseDate = data['originalReleaseDate'] / 1000
 
     @property
     def tracks(self):
@@ -60,8 +59,7 @@ class Album(object):
         """
         # If we've only got a summary, load the full data
         if 'tracks' not in self.json:
-            a = self._am.get_album(self.id)
-            self.__init__(self._am, a.json)
+            album = self._am.get_album(self.id)
+            self.__init__(self._am, album.json)
 
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
-
+        return [Track(self._am, track) for track in self.json['tracks']]

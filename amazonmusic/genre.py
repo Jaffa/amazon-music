@@ -23,14 +23,14 @@ class Genre(object):
         Internal use only.
 
         :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the artist, from Amazon Music. Supports `cirrus` formats for now
+        :param data: JSON data structure for the artist, from Amazon Music.
+            Supports `cirrus` formats for now
         """
         self._am = am
         self.json = data
         if 'metadata' in data:
             self.trackCount = data['numTracks']
             self.json = data['metadata']
-            data = self.json
             self.id = data['objectId']
             self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
             self.name = data['primaryGenre']

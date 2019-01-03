@@ -6,7 +6,8 @@ from .track import Track
 
 class Station(object):
     """
-    Represents a streamable, unending station. This should be created with `AmazonMusic.createStation`.
+    Represents a streamable, unending station. This should be created with
+    `AmazonMusic.createStation`.
 
     Key properties are:
 
@@ -26,10 +27,13 @@ class Station(object):
         self._am = am
         self.id = data['stationKey']
         self.json = data
-        self.coverUrl = ('queue' in data and data['queue']['queueMetadata']['imageUrlMap']['FULL']) or data['stationImageUrl']
-        self.name = ('queue' in data and data['queue']['queueMetadata']['title']) or data['stationTitle']
-        self._pageToken = ('queue' in data and data['queue']['pageToken']) or ('seed' in data and data[ 'seed' ][ 'seedId' ])
-        
+        self.coverUrl = data['queue']['queueMetadata']['imageUrlMap']['FULL']\
+                if 'queue' in data else data['stationImageUrl']
+        self.name = data['queue']['queueMetadata']['title']\
+                if 'queue' in data else data['stationTitle']
+        self._pageToken = ('queue' in data and data['queue']['pageToken'])\
+                or ('seed' in data and data['seed']['seedId'])
+
     @property
     def tracks(self):
         """
@@ -57,4 +61,3 @@ class Station(object):
                     })
                 self._pageToken = data['nextPageToken']
                 tracks.extend(data['trackMetadataList'])
-

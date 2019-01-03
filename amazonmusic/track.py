@@ -34,10 +34,12 @@ class Track(object):
         self.id = data.get('asin') or data['identifier']
         self.name = data.get('name') or data['title']
         self.artist = data.get('artistName') or data['artist']['name']
-        self.album = data.get('albumName') or data['album'].get('name') or data['album'].get('title')
-        self.albumArtist =  data['albumArtistName'] if 'albumArtistName' in data else None
+        self.album = data.get('albumName') or data['album'].get('name')\
+                or data['album'].get('title')
+        self.albumArtist = data['albumArtistName'] if 'albumArtistName' in data else None
         self.coverUrl = None
-        self.purchased= ( 'orderId' in data and True ) or False
+        self.purchased = 'orderId' in data
+
         if 'artUrlMap' in data:
             self.coverUrl = data['artUrlMap'].get('FULL', data['artUrlMap'].get('LARGE'))
         elif 'album' in data and 'image' in data['album']:
@@ -52,7 +54,8 @@ class Track(object):
             self.identifierType = 'ASIN'
             self.identifier = data['asin']
 
-        self.duration = data.get('durationInSeconds' ) or data.get('duration' ) or data[ 'durationSeconds' ]
+        self.duration = data.get('durationInSeconds') or data.get('duration')\
+                or data['durationSeconds']
 
     @property
     def stream_url(self):
@@ -84,13 +87,14 @@ class Track(object):
                         'contentDuration': self.duration
                     }
                 })
-            if 'statusCode' in stream_json and stream_json['statusCode'] == 'MAX_CONCURRENCY_REACHED':
+            if 'statusCode' in stream_json and\
+                    stream_json['statusCode'] == 'MAX_CONCURRENCY_REACHED':
                 raise Exception(stream_json['statusCode'])
 
             try:
                 self._url = stream_json['contentResponse']['urlList'][0]
             except KeyError as e:
-                e.args = ('{} not found in {}'.format(e.args[0], json.dumps(stream_json, sort_keys=True)),)
+                data = json.dumps(stream_json, sort_keys=True)
+                e.args = ('{} not found in {}'.format(e.args[0], data),)
                 raise
         return self._url
-

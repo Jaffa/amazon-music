@@ -6,7 +6,8 @@ from .track import Track
 
 class Playlist(object):
     """
-    Represents a streamable, playable playlist. This should be created with `AmazonMusic.getPlaylist`.
+    Represents a streamable, playable playlist. This should be created with
+        `AmazonMusic.getPlaylist`.
 
     Key properties are:
 
@@ -40,7 +41,7 @@ class Playlist(object):
         """
         Provide the list for the `Tracks` that make up this album.
         """
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
+        return [Track(self._am, track) for track in self.json['tracks']]
 
 
 class FollowedPlaylist(object):
@@ -68,12 +69,14 @@ class FollowedPlaylist(object):
         self._am = am
         self.json = data
         self.id = data['asin']
-        self.coverUrl = ( 'bannerImage' in data and data[ 'bannerImage' ]['url'] ) or ('fourSquareImage' in data and data['fourSquareImage']['url']) or data[ 'albumArtImageUrl' ]
+        self.coverUrl = ('bannerImage' in data and data['bannerImage']['url'])\
+            or ('fourSquareImage' in data and data['fourSquareImage']['url'])\
+            or data['albumArtImageUrl']
         self.name = data['title']
         self.description = data['description']
-        self.trackCount = data.get('totalTrackCount' ) or data[ 'trackCount' ]
-        self.created= data.get( 'createdDate', '0' )
-        self.durationSecs= data.get( 'durationSeconds' ) or data[ 'duration' ]
+        self.trackCount = data.get('totalTrackCount') or data['trackCount']
+        self.created = data.get('createdDate')
+        self.durationSecs = data.get('durationSeconds') or data['duration']
 
 
 class OwnPlaylist(object):
@@ -103,6 +106,5 @@ class OwnPlaylist(object):
         self.coverUrl = data['fourSquareImage']['url']
         self.name = data['title']
         self.trackCount = data['totalTrackCount']
-        self.created= data[ 'createdDate' ]
-        self.durationSecs= data[ 'durationSeconds' ]
-
+        self.created = data['createdDate']
+        self.durationSecs = data['durationSeconds']

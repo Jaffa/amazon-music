@@ -26,7 +26,8 @@ class Artist(object):
         Internal use only.
 
         :param am: AmazonMusic object, used to make API calls.
-        :param data: JSON data structure for the artist, from Amazon Music. Supports `cirrus` formats for now
+        :param data: JSON data structure for the artist, from Amazon Music.
+            Supports `cirrus` formats for now
         """
         self._am = am
         self.json = data
@@ -56,8 +57,7 @@ class Artist(object):
         """
         # If we've only got a summary, load the full data
         if 'tracks' not in self.json:
-            a = self._am.get_album(self.id)
-            self.__init__(self._am, a.json)
+            album = self._am.get_album(self.id)
+            self.__init__(self._am, album.json)
 
-        return list(map(lambda t: Track(self._am, t), self.json['tracks']))
-
+        return [Track(self._am, track) for track in self.json['tracks']]
