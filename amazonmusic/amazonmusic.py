@@ -8,21 +8,21 @@ This module implements an API for interacting with Amazon Music.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from bs4 import BeautifulSoup
 import json
 import os
-import requests
 import re
 import types
+import requests
+from bs4 import BeautifulSoup
 # internal package imports
 from . import *
 from .track import Track
@@ -40,7 +40,7 @@ except ImportError:
     from cookielib import MozillaCookieJar, LWPCookieJar, Cookie
 
 
-class AmazonMusic:
+class AmazonMusic(object):
     """
     Allows interaction with the Amazon Music service through a programmatic
     interface.
@@ -63,10 +63,9 @@ class AmazonMusic:
 
         local_dir = os.path.dirname(os.path.realpath(__file__))
         def _cookie_path(extension):
-           return cookies or '{}/.amazonmusic-cookies.{}'.format(os.environ.get('HOME',
-                                                                   os.environ.get('LOCALAPPDATA',
-                                                                   local_dir)),
-                                                                 extension)
+            app_data_path = os.environ.get('HOME', os.environ.get('LOCALAPPDATA', local_dir))
+            return cookies or '{}/.amazonmusic-cookies.{}'.format(app_data_path, extension)
+
         cookie_path = _cookie_path('dat')
         self.session = requests.Session()
         if os.path.isfile(cookie_path):
@@ -80,36 +79,40 @@ class AmazonMusic:
 
         target_cookie = next((c for c in self.session.cookies if c.name == COOKIE_TARGET), None)
         if target_cookie is None:
-            target_cookie = Cookie(1, COOKIE_TARGET, AMAZON_MUSIC, '0', False, ':invalid', True, ':invalid', '', False,
-                                   True, 2147483647, False, 'Used to store target music URL',
+            target_cookie = Cookie(1, COOKIE_TARGET, AMAZON_MUSIC, '0', False, ':invalid',
+                                   True, ':invalid', '', False, True, 2147483647, False,
+                                   'Used to store target music URL',
                                    'https://github.com/Jaffa/amazon-music/', {})
 
         # -- Fetch the homepage, authenticating if necessary...
         #
-        self.__c = credentials
-        r = self.session.get(target_cookie.value, headers=self._http_headers(None))
+        self.__credentials = credentials
+        response = self.session.get(target_cookie.value, headers=self._http_headers(None))
         self.session.cookies.save()
         os.chmod(cookie_path, 0o600)
 
         app_config = None
         while app_config is None:
-            while r.history and any(h.status_code == 302 and AMAZON_SIGNIN in h.headers['Location'] for h in r.history):
-                r = self._authenticate(r)
+            while response.history and\
+                    any(h.status_code == 302 and AMAZON_SIGNIN in h.headers['Location']
+                            for h in response.history):
+                response = self._authenticate(response)
 
             # -- Parse out the JSON config object...
             #
-            for line in r.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(decode_unicode=True):
                 if 'amznMusic.appConfig = ' in line:
                     app_config = json.loads(re.sub(r'^[^{]*', '', re.sub(r';$', '', line)))
                     break
 
             if app_config is None:
-                raise Exception("Unable to find appConfig in {}".format(r.content))
+                raise Exception("Unable to find appConfig in {}".format(response.content))
 
             if app_config['isRecognizedCustomer'] == 0:
-                r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers=self._http_headers(r))
+                response = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN,
+                                            headers=self._http_headers(response))
                 app_config = None
-        self.__c = None
+        self.__credentials = None
 
         # -- Store session variables...
         #
@@ -128,54 +131,57 @@ class AmazonMusic:
         self.session.cookies.set_cookie(target_cookie)
         self.session.cookies.save()
 
-    def _authenticate(self, r):
+    def _authenticate(self, response):
         """
         Handles the sign-in process with Amazon's login page.
 
-        :param r: The response object pointing to the Amazon signin page.
+        :param response: The response object pointing to the Amazon signin page.
         """
-        if isinstance(self.__c, types.FunctionType):
-            self.__c = self.__c()
+        if isinstance(self.__credentials, types.FunctionType):
+            self.__credentials = self.__credentials()
 
-        if not isinstance(self.__c, list) or len(self.__c) != 2:
-            raise Exception("Invalid self.__c: expected list of two elements, but got " + type(self.__c))
+        if not isinstance(self.__credentials, list) or len(self.__credentials) != 2:
+            raise Exception("Invalid self.__credentials: expected list of two elements, but got "\
+                            + type(self.__credentials))
 
-        r = self._post(r, {"email": self.__c[0], "password": self.__c[1]})
-        soup = BeautifulSoup(r.content, "html.parser")
+        response = self._post(response, {"email": self.__credentials[0],
+                                         "password": self.__credentials[1]})
+        soup = BeautifulSoup(response.content, "html.parser")
         tag = soup.select('audio#audio-captcha source')
-        if tag is not None and len(tag) > 0:
+        if tag:
             raise Exception("Unable to handle captcha: {}".format(tag))
 
         self.session.cookies.save()
-        return r
+        return response
 
-    def _post(self, r, data):
+    def _post(self, response, data):
         """
         Assuming an HTML form, copy over any hidden fields and submit it with the extra data.
 
-        :param r: The response object pointing to the Amazon signin page.
+        :param response: The response object pointing to the Amazon signin page.
         """
-        soup = BeautifulSoup(r.content, "html.parser")
+        soup = BeautifulSoup(response.content, "html.parser")
         query = {}
         for field in soup.form.find_all("input"):
             if field.get("type") == "hidden":
                 query[field.get("name")] = field.get("value")
 
         query.update(data)
-        r = self.session.post(soup.form.get("action"),
-                              headers = self._http_headers(r),
-                              data = query)
-        return r
+        response = self.session.post(soup.form.get("action"),
+                                     headers=self._http_headers(response),
+                                     data=query)
+        return response
 
-    def _http_headers(self, r):
+    def _http_headers(self, response):
         """
         Given a given response, return the set of HTTP headers to use for the next request.
 
-        :param r: The current page.
+        :param response: The current page.
         """
         return {
             'User-Agent': USER_AGENT,
-            'Referer': r.history[0].headers['Location'] if r and len(r.history) > 0 else '',
+            'Referer': response.history[0].headers['Location']\
+                    if response and response.history else '',
             'Upgrade-Insecure-Requests': '1',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en-GB;q=0.7,chrome://global/locale/intl.properties;q=0.3'
@@ -204,10 +210,11 @@ class AmazonMusic:
             query_headers['Content-Encoding'] = 'amz-1.0'
             query_data = json.dumps(query)
 
-        r = self.session.post('{}/{}/api/{}'.format(self.url, self.region, endpoint), headers=query_headers,
-                              data=query_data)
+        response = self.session.post('{}/{}/api/{}'.format(self.url, self.region, endpoint),
+                                     headers=query_headers,
+                                     data=query_data)
         self.session.cookies.save()
-        return r.json()
+        return response.json()
 
     def create_station(self, station_id):
         """
@@ -226,8 +233,7 @@ class AmazonMusic:
                                  'musicTerritory': self.territory,
                                  'customerId': self.customerId
                              }
-                         }
-        )
+                         })
         # Augment station key to data, because it is not included in the results of this API call
         data['stationKey'] = station_id
         return Station(self, data)
@@ -268,11 +274,13 @@ class AmazonMusic:
         :return: a Track object containing track information
         """
         # Using search as bridge (or hack) to get track information
-        search_result = self.search(track_id, library_only=False, tracks=True, albums=False, playlists=False, artists=False, stations=False)
+        search_result = self.search(track_id, library_only=False, tracks=True,
+                                    albums=False, playlists=False, artists=False,
+                                    stations=False)
         # TODO error handling on not found
-        track_data = [record[1]['hits'][0]['document'] for record in search_result if record[0] == 'catalog_tracks' ][0]
+        track_data = [record[1]['hits'][0]['document']
+                      for record in search_result if record[0] == 'catalog_tracks'][0]
         return Track(self, track_data)
-
 
     @property
     def my_albums(self):
@@ -318,9 +326,10 @@ class AmazonMusic:
         results = []
         results.extend(data['searchReturnItemList'])
         while results:
-            r = results.pop(0)
-            # if r['numTracks'] >= 4 and r['metadata'].get('primeStatus') == 'PRIME':  # DB: Amazon music ignores this status and shows all artists. 
-            yield Album(self, r)
+            response = results.pop(0)
+            # if r['numTracks'] >= 4 and r['metadata'].get('primeStatus') == 'PRIME'
+            # DB: Amazon music ignores this status and shows all artists.
+            yield Album(self, response)
 
             if not results and data['nextResultsToken']:
                 query['nextResultsToken'] = data['nextResultsToken']
@@ -330,7 +339,7 @@ class AmazonMusic:
     @property
     def my_artists(self):
         """
-        Return artists that are in the library. 
+        Return artists that are in the library.
         """
         query = {
             'Operation': 'searchLibrary',
@@ -370,20 +379,21 @@ class AmazonMusic:
         results = []
         results.extend(data['searchReturnItemList'])
         while results:
-            r = results.pop(0)
-            
-            # if r['metadata'].get('primeStatus') == 'PRIME':  # DB: Amazon music ignores this status and shows all artists. 
-            yield Artist(self, r)
+            response = results.pop(0)
+
+            # if r['metadata'].get('primeStatus') == 'PRIME':
+            # DB: Amazon music ignores this status and shows all artists
+            yield Artist(self, response)
 
             if not results and data['nextResultsToken']:
                 query['nextResultsToken'] = data['nextResultsToken']
                 data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
                 results.extend(data['searchReturnItemList'])
-    
+
     @property
     def my_genres(self):
         """
-        Return artists that are in the library. 
+        Return artists that are in the library.
         """
         query = {
             'Operation': 'searchLibrary',
@@ -413,20 +423,21 @@ class AmazonMusic:
         results = []
         results.extend(data['searchReturnItemList'])
         while results:
-            r = results.pop(0)
-            
-            # if r['metadata'].get('primeStatus') == 'PRIME':  # DB: Amazon music ignores this status and shows all artists. 
-            yield Genre(self, r)
+            response = results.pop(0)
+
+            # if r['metadata'].get('primeStatus') == 'PRIME':
+            # DB: Amazon music ignores this status and shows all artists.
+            yield Genre(self, response)
 
             if not results and data['nextResultsToken']:
                 query['nextResultsToken'] = data['nextResultsToken']
                 data = self.call('cirrus/', None, query)['searchLibraryResponse']['searchLibraryResult']
                 results.extend(data['searchReturnItemList'])
-    
+
     @property
     def my_own_playlists(self):
         """
-        Return own (user's only) playlists that are in the library. 
+        Return own (user's only) playlists that are in the library.
         """
         query = {
             'entryOfffset': 0,
@@ -437,17 +448,19 @@ class AmazonMusic:
             'deviceType': self.deviceType,
         }
 
-        data = self.call('playlists/', 'com.amazon.musicplaylist.model.MusicPlaylistService.getOwnedPlaylistsInLibrary', query)
+        data = self.call('playlists/',
+                         'com.amazon.musicplaylist.model.MusicPlaylistService.getOwnedPlaylistsInLibrary',
+                         query)
         results = []
         results.extend(data['playlists'])
         while results:
-            r = results.pop(0)
-            yield OwnPlaylist(self, r)
+            response = results.pop(0)
+            yield OwnPlaylist(self, response)
 
     @property
     def my_followed_playlists(self):
         """
-        Return own (user's only) playlists that are in the library. 
+        Return own (user's only) playlists that are in the library.
         """
         query = {
             'entryOfffset': 0,
@@ -459,12 +472,14 @@ class AmazonMusic:
             'optIntoSharedPlaylists': 'true',
         }
 
-        data = self.call('playlists/', 'com.amazon.musicplaylist.model.MusicPlaylistService.getFollowedPlaylistsInLibrary', query)
+        data = self.call('playlists/',
+                         'com.amazon.musicplaylist.model.MusicPlaylistService.getFollowedPlaylistsInLibrary',
+                         query)
         results = []
         results.extend(data['playlists'])
         while results:
-            r = results.pop(0)
-            yield FollowedPlaylist(self, r)
+            response = results.pop(0)
+            yield FollowedPlaylist(self, response)
 
     @property
     def my_songs(self):
@@ -489,7 +504,7 @@ class AmazonMusic:
             'selectedColumns.member.6': 'objectId',
             'selectedColumns.member.7': 'sortAlbumArtistName',
             'selectedColumns.member.8': 'sortAlbumName',
-            'selectedColumns.member.9': 'sortArtistName',
+            'selectedColumns.member.9': 'sortArtistName', # TODO check
             'selectedColumns.member.9': 'albumCoverImageFull',
             'selectedColumns.member.10': 'title',
             'selectedColumns.member.11': 'status',
@@ -518,10 +533,10 @@ class AmazonMusic:
         results = []
         results.extend(data['searchReturnItemList'])
         while results:
-            r = results.pop(0)
-            yield Track(self, r[ 'metadata' ])
-            
-    def _get_playlists_by_parent(self, parent, rank_type ):
+            response = results.pop(0)
+            yield Track(self, response['metadata'])
+
+    def _get_playlists_by_parent(self, parent, rank_type):
         """
         Return playlists based on parent category and rank_type
         """
@@ -532,7 +547,7 @@ class AmazonMusic:
             'deviceType':       self.deviceType,
             'lang':             self.locale,
             'requestedContent': 'PRIME',
-            'maxCount':         24, 
+            'maxCount':         24,
             'rankType':         rank_type,
             'types':            ["playlist"],
             'features':         ["playlistLibraryAvailability", "ownership"],
@@ -540,14 +555,16 @@ class AmazonMusic:
             'nextTokenMap':     {'playlist': ''},
         }
 
-        data = self.call('muse/getTopMusicEntities', 'com.amazon.musicensembleservice.MusicEnsembleService.getTopMusicEntities', query)
+        data = self.call('muse/getTopMusicEntities',
+                         'com.amazon.musicensembleservice.MusicEnsembleService.getTopMusicEntities',
+                         query)
         results = []
         results.extend(data['playlistList'])
         while results:
-            r = results.pop(0)
-            yield Playlist(self, r)
+            response = results.pop(0)
+            yield Playlist(self, response)
 
-    def get_category_playlists(self, category, parent= None ):
+    def get_category_playlists(self, category, parent=None):
         """
         Return playlists based on category and allow dig deeper when parent ID is known
         """
@@ -560,20 +577,22 @@ class AmazonMusic:
             'requestedContent': 'PRIME',
         }
 
-        data = self.call('muse/browseHierarchyV2', 'com.amazon.musicensembleservice.MusicEnsembleService.browseHierarchyV2', query)
+        data = self.call('muse/browseHierarchyV2',
+                         'com.amazon.musicensembleservice.MusicEnsembleService.browseHierarchyV2',
+                         query)
         results = []
         results.extend(data['browseHierarchy'])
         while results:
-            r = results.pop(0)
-            if r[ 'type' ]== category:
-              # Check if we have nesting
-              if parent:
-                # Find our parent and browse into it
-                yield self._get_playlists_by_parent( parent, 'popularity-rank' )
-              else:
-                for b in r[ 'browseObjects' ]:
-                  yield BrowseObject(self, b)
-    
+            response = results.pop(0)
+            if response['type'] == category:
+                # Check if we have nesting
+                if parent:
+                    # Find our parent and browse into it
+                    yield self._get_playlists_by_parent(parent, 'popularity-rank')
+                else:
+                    for browse_object in response['browseObjects']:
+                        yield BrowseObject(self, browse_object)
+
     def get_playlists(self, album_id):
         """
         Get a playlist that can be played.
@@ -602,7 +621,8 @@ class AmazonMusic:
             )['playlistList'][0]
         )
 
-    def search(self, query, library_only=False, tracks=True, albums=True, playlists=True, artists=True, stations=True):
+    def search(self, query, library_only=False, tracks=True, albums=True,
+               playlists=True, artists=True, stations=True):
         """
         Search Amazon Music for the given query, and return matching results
         (playlists, albums, tracks and artists).
@@ -611,14 +631,16 @@ class AmazonMusic:
         native data structure is returned.
 
         :param query: Query.
-        :param library_only (optional) Limit to the user's library only, rather than the library + Amazon Music.
-               Defaults to false.
+        :param library_only (optional) Limit to the user's library only,
+            rather than the library + Amazon Music.
+            Defaults to false.
         :param tracks: (optional) Include tracks in the results, defaults to true.
         :param albums: (optional) Include albums in the results, defaults to true.
         :param playlists: (optional) Include playlists in the results, defaults to true.
         :param artists: (optional) Include artists in the results, defaults to true.
-        :param stations: (optional) Include stations in the results, defaults to true - only makes sense if
-               `library_only` is false.
+        :param stations: (optional) Include stations in the results,
+            defaults to true - only makes sense if
+            `library_only` is false.
         """
         query_obj = {
             'deviceId': self.deviceId,
@@ -634,8 +656,8 @@ class AmazonMusic:
         # -- Set up the search object...
         #
         if library_only:
-            def _set_q(q):
-                query_obj['query'] = q
+            def _set_q(query):
+                query_obj['query'] = query
         else:
             query_obj['query'] = {
                 '__type': 'com.amazon.music.search.model#BooleanQuery',
@@ -647,8 +669,8 @@ class AmazonMusic:
                 }]
             }
 
-            def _set_q(q):
-                query_obj['query']['must'][0] = q
+            def _set_q(query):
+                query_obj['query']['must'][0] = query
 
         # -- Set up the query...
         #
@@ -666,11 +688,11 @@ class AmazonMusic:
         def _add_result_spec(**kwargs):
             for type_ in kwargs:
                 if kwargs[type_]:
-                    def result_spec(n):
+                    def result_spec(spec_label):
                         return {
-                            'label': '{}s'.format(n),  # Before it was %ss, is {}s right?
+                            'label': '{}s'.format(spec_label),  # Before it was %ss, is {}s right?
                             'documentSpecs': [{
-                                'type': n,
+                                'type': spec_label,
                                 'fields': [
                                     '__DEFAULT',
                                     'artFull',
@@ -696,11 +718,11 @@ class AmazonMusic:
 
         # TODO Convert into a better data structure
         # TODO There seems to be a paging token
-        return list(map(
-            lambda r: [r['label'], r],
-            self.call('search/v1_1/', 'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search', query_obj)['results']
-        ))
-    
+        data = self.call('search/v1_1/',
+                         'com.amazon.tenzing.v1_1.TenzingServiceExternalV1_1.search',
+                         query_obj)['results']
+        return [[item['label'], item] for item in data]
+
     def recommended(self):
         """
         Return all recommended categories for logged user(playlists,albums,songs,stations)
@@ -715,20 +737,26 @@ class AmazonMusic:
             'musicTerritory': self.territory,
             'requestedContent': 'PRIME',
         }
-        data = self.call('muse/legacy/getBrowseRecommendations/', 'com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations', query)
+        data = self.call('muse/legacy/getBrowseRecommendations/',
+                         'com.amazon.musicensembleservice.MusicEnsembleService.getBrowseRecommendations',
+                         query)
         results = []
         results.extend(data['recommendations'])
         while results:
-            r = results.pop(0)
-            if r['recommendationType'] == 'PLAYLIST':
-                yield {'type': r['recommendationType'], 'items': [FollowedPlaylist(self, playlist) for playlist in r['playlists']]}
-            if r['recommendationType'] == 'ALBUM':
-                yield {'type': r['recommendationType'], 'items': [Album(self, album) for album in r['albums']]}
-            if r['recommendationType'] == 'TRACK':
-                yield {'type': r['recommendationType'], 'items': [Track(self, track) for track in r['tracks']]}
-            if r['recommendationType'] == 'STATION':
-                yield {'type': r['recommendationType'], 'items': [Station(self, station) for station in r['stations']]}
-        
+            res = results.pop(0)
+            if res['recommendationType'] == 'PLAYLIST':
+                yield {'type': res['recommendationType'],
+                       'items': [FollowedPlaylist(self, playlist) for playlist in res['playlists']]}
+            if res['recommendationType'] == 'ALBUM':
+                yield {'type': res['recommendationType'],
+                       'items': [Album(self, album) for album in res['albums']]}
+            if res['recommendationType'] == 'TRACK':
+                yield {'type': res['recommendationType'],
+                       'items': [Track(self, track) for track in res['tracks']]}
+            if res['recommendationType'] == 'STATION':
+                yield {'type': res['recommendationType'],
+                       'items': [Station(self, station) for station in res['stations']]}
+
     def get_stations(self, parent=None):
         """
         Return all recommended stations
@@ -741,18 +769,19 @@ class AmazonMusic:
             'musicTerritory': self.territory,
             'requestedContent': 'PRIME',
         }
-        data = self.call('muse/stations/getStationSections', 'com.amazon.musicensembleservice.MusicEnsembleService.getStationSections', query)
-        categories= data[ 'categories' ]
+        data = self.call('muse/stations/getStationSections',
+                         'com.amazon.musicensembleservice.MusicEnsembleService.getStationSections',
+                         query)
+        categories = data['categories']
         if parent:
-          # Retrieve all stations
-          stations= data[ 'stations' ]
-        
+            # Retrieve all stations
+            stations = data['stations']
+
         for category in categories:
-            c = categories[ category ]
+            category_data = categories[category]
             if parent:
-              if c[ 'categoryId' ]== parent:
-                for station in c[ 'stationMapIds' ]:
-                  yield Station( self, stations[ station ] )
-            else:
-              yield BrowseObject( self, c )
-              
+                if category_data['categoryId'] == parent:
+                    for station in category_data['stationMapIds']:
+                        yield Station(self, stations[station])
+                else:
+                    yield BrowseObject(self, category_data)

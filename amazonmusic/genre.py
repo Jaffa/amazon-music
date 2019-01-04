@@ -30,7 +30,8 @@ class Genre(object):
         self.json = data
         if 'metadata' in data:
             self.trackCount = data['numTracks']
-            self.json = data['metadata']
+            data = data['metadata']
+            self.json = data
             self.id = data['objectId']
             self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
             self.name = data['primaryGenre']

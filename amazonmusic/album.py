@@ -3,7 +3,6 @@ Album class
 """
 from .track import Track
 
-
 class Album(object):
     """
     Represents a streamable, playable album. This should be created with
@@ -34,8 +33,9 @@ class Album(object):
         self.json = data
         if 'metadata' in data:
             self.trackCount = data['numTracks']
-            self.json = data['metadata']
-            self.id = data['albumAsin']
+            data = data['metadata']
+            self.json = data
+            self.id = data.get('albumAsin') or data['asin']
             self.coverUrl = data.get('albumCoverImageFull', data.get('albumCoverImageMedium'))
             self.name = data['albumName']
             self.artist = data['albumArtistName']
