@@ -1,6 +1,28 @@
 Development
 ===========
 
+Getting started
+---------------
+To get started with development it is desirable to work within a virtual environment and install this package as editable:
+
+```shell
+$ virtualenv venv
+$ source ./venv/bin/activate
+(venv) $ pip install -e .
+(venv) $ python examples/my-library.py
+```
+
+[Pipenv](https://github.com/pypa/pipenv) offers a little bit more convinient way:
+```shell
+$ pipenv --two # create virtual environment for python 2 (use --three for a python 3 environment)
+$ pipenv install
+$ pipenv run examples/my-library.py
+```
+Since we already got an Pipfile, which marks this package to install, pipenv will take care of all requirements mentions in the `setup.py`.
+
+If you use additional packages in your venv, which are required by this package, please make sure to add them to the `install_requires` on the top of the `setup.py`.
+
+
 Overview
 --------
 The _AmazonMusic_ library works in two parts:
@@ -106,6 +128,9 @@ When searching the catalogue, one of the constraints is `primeStatus = PRIME`:
 ```
 
 Looking at a de-minified version of `digitalMusicWebPlayer.js` suggests that the alternative for Music Unlimited would be `isMusicSubscription == true`.
+
+It seems like, that collections with a `catalogue_` prefix as contain restults, which are available by Amazon Music.
+The collections with `library_` prefix therefor may contain stuff of your own library.
 
 ### Library
 

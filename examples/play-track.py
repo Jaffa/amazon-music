@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Search Amazon Music for a given query, and show the results.
+# Play an Amazon Music album.
 #
 # Copyright (c) 2018 by Andrew Flegg.
 #
@@ -18,32 +18,20 @@
 
 from amazonmusic.amazonmusic import AmazonMusic
 from getpass import getpass
-import sys
-import json
+import subprocess, os, sys
 try: input = raw_input
 except NameError: pass
-
-#import requests
-#import logging
-#import http.client as http_client
-#http_client.HTTPConnection.debuglevel = 1
-#logging.basicConfig()
-#logging.getLogger().setLevel(logging.DEBUG)
-#requests_log = logging.getLogger("requests.packages.urllib3")
-#requests_log.setLevel(logging.DEBUG)
-#requests_log.propagate = True
 
 # -- Create a session...
 #
 am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon password: ')])
 
-# -- Check syntax...
-if len(sys.argv) < 2:
-  print("syntax: search.py <terms...>")
-  sys.exit(1)
-
-# -- Search for the command line argument and show the results...
+# -- Play an album...
 #
-results = am.search(' '.join(sys.argv[1:]), albums=False, artists=False, stations=False, playlists=False)
-print(json.dumps(results, sort_keys=True, indent=2))
+asin = sys.argv[1] if len(sys.argv) == 2 else 'B005NK9IHS'
+track = am.get_track(asin)
 
+print("Playing %s..." % (track.name))
+#os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+print(track.stream_url)
+print('-------------------------')

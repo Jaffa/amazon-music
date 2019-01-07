@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from amazonmusic import AmazonMusic
+from amazonmusic.amazonmusic import AmazonMusic
 from getpass import getpass
 import os, sys
 try: input = raw_input
@@ -28,11 +28,12 @@ am = AmazonMusic(credentials = lambda: [input('Email: '), getpass('Amazon passwo
 
 # -- Play a station...
 #
-asin = sys.argv[1] if len(sys.argv) == 2 else 'B075QGZDZ3'
+asin = sys.argv[1] if len(sys.argv) == 2 else 'B01MRIAAFE'
 playlist = am.get_playlists(asin)
 print('Art: %s\nPlaying playlist %s (%d/5)...' % (playlist.coverUrl, playlist.name, playlist.rating))
 
 for t in playlist.tracks:
   print("Playing %s by %s from %s [%s]..." % (t.name, t.artist, t.album, t.albumArtist))
-  os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+  #os.system("cvlc --play-and-exit '%s'" % (t.stream_url))
+  print(t.stream_url)
   print('-------------------------')

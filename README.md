@@ -10,7 +10,7 @@ Example usage
 -------------
 
 ```python
-from amazonmusic import AmazonMusic
+from amazonmusic.amazonmusic import AmazonMusic
 import os
 
 am = AmazonMusic(credentials=['foo@example.com', 'xyzzy'])
