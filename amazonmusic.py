@@ -35,6 +35,7 @@ AMAZON_SIGNIN = '/ap/signin'
 AMAZON_FORCE_SIGNIN = '/gp/dmusic/cloudplayer/forceSignIn'
 COOKIE_TARGET = '_AmazonMusic-targetUrl'  # Placeholder cookie to store target server in
 USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'
+APP_CONFIG_LINE_IDENTIFIER = 'var applicationContextConfiguration = '  # override as needed for a quick fix
 
 # Overrides for realm -> region, if the first two characters can't be used, based on digitalMusicPlayer
 REGION_MAP = {
@@ -100,37 +101,54 @@ class AmazonMusic:
             while r.history and any(h.status_code == 302 and AMAZON_SIGNIN in h.headers['Location'] for h in r.history):
                 r = self._authenticate(r)
 
-            # -- Parse out the JSON config object...
-            #
-            for line in r.iter_lines(decode_unicode=True):
-                if 'amznMusic.appConfig = ' in line:
-                    app_config = json.loads(re.sub(r'^[^{]*', '', re.sub(r';$', '', line)))
-                    break
+            app_config = self._get_app_config(r)
 
             if app_config is None:
                 raise Exception("Unable to find appConfig in {}".format(r.content))
 
-            if app_config['isRecognizedCustomer'] == 0:
+            if app_config.isRecognizedCustomer == 0:
                 r = self.session.get(AMAZON_MUSIC + AMAZON_FORCE_SIGNIN, headers=self._http_headers(r))
                 app_config = None
+
         self.__c = None
 
         # -- Store session variables...
         #
-        self.deviceId = app_config['deviceId']
-        self.csrfToken = app_config['CSRFTokenConfig']['csrf_token']
-        self.csrfTs = app_config['CSRFTokenConfig']['csrf_ts']
-        self.csrfRnd = app_config['CSRFTokenConfig']['csrf_rnd']
-        self.customerId = app_config['customerId']
-        self.deviceType = app_config['deviceType']
-        self.territory = app_config['musicTerritory']
-        self.locale = app_config['i18n']['locale']
-        self.region = REGION_MAP.get(app_config['realm'], app_config['realm'][:2])
-        self.url = 'https://' + app_config['serverInfo']['returnUrlServer']
+        self.deviceId = app_config.deviceId
+        self.csrfToken = app_config.csrfToken
+        self.csrfTs = app_config.csrfTs
+        self.csrfRnd = app_config.csrfRnd
+        self.customerId = app_config.customerId
+        self.deviceType = app_config.deviceType
+        self.territory = app_config.territory
+        self.locale = app_config.locale
+        self.region = app_config.region
+        self.url = app_config.url
 
         target_cookie.value = self.url
         self.session.cookies.set_cookie(target_cookie)
         self.session.cookies.save()
+
+    def _get_app_config(self, r):
+        """
+        Finds configuration info in a `Response` and returns a `SessionConfig` object.
+
+        If this project falls out of date, change `APP_CONFIG_LINE_IDENTIFIER` as
+        needed or this method can be overwritten by subclassing without having to
+        wait for an update to the api.
+
+        :param requests.Response r:
+        """
+        app_config = None
+        # -- Parse out the JSON config object...
+        #
+        for line in r.iter_lines(decode_unicode=True):
+            if APP_CONFIG_LINE_IDENTIFIER in line:
+                app_config = json.loads(re.sub(r'^[^{]*', '', re.sub(r';$', '', line)))
+                app_config = SessionConfig(app_config)
+                break
+
+        return app_config
 
     def _authenticate(self, r):
         """
@@ -692,3 +710,21 @@ class Track:
                 e.args = ('{} not found in {}'.format(e.args[0], json.dumps(stream_json, sort_keys=True)),)
                 raise
         return self._url
+
+
+class SessionConfig:
+    """
+    If the keys in which the values we need are changed, update this object.
+    """
+    def __init__(self, app_config):
+        self.csrfToken = app_config['CSRFTokenConfig']['csrf_token']
+        self.csrfTs = app_config['CSRFTokenConfig']['csrf_ts']
+        self.csrfRnd = app_config['CSRFTokenConfig']['csrf_rnd']
+        self.customerId = app_config['customerId']
+        self.deviceId = app_config['deviceId']
+        self.deviceType = app_config['deviceType']
+        self.isRecognizedCustomer = app_config['isRecognizedCustomer']
+        self.locale = app_config['i18n']['locale']
+        self.territory = app_config['musicTerritory']
+        self.region = REGION_MAP.get(app_config['realm'], app_config['realm'][:2])
+        self.url = 'https://' + app_config['serverInfo']['returnUrlServer']
